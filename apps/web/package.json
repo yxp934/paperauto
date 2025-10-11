@@ -8,11 +8,27 @@
     "start": "next start -p 3000"
   },
   "dependencies": {
+    "@radix-ui/react-context-menu": "^2.2.16",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
+    "@radix-ui/react-hover-card": "^1.1.15",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-menubar": "^1.1.16",
+    "@radix-ui/react-popover": "^1.1.15",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-slot": "^1.2.3",
+    "autoprefixer": "^10.4.21",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.545.0",
     "next": "^14.2.15",
+    "postcss": "^8.5.6",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss": "^3.4.18"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.0",
     "@types/react": "19.2.2",
     "typescript": "5.9.3"
   }

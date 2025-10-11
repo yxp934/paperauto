@@ -11,6 +11,8 @@ app = FastAPI(title="Video Generation Backend", version="0.2.0")
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
 ]
 
 app.add_middleware(
