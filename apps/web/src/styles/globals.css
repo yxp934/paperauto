@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens copied from figmaui */
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 14px;
+  --background: #F2F2F2;
+  --foreground: #591C21;
+  --card: #ffffff;
+  --card-foreground: #591C21;
+  --popover: #ffffff;
+  --popover-foreground: #591C21;
+  --primary: #8C1F28;
+  --primary-foreground: #ffffff;
+  --secondary: #044040;
+  --secondary-foreground: #ffffff;
+  --muted: #e5e5e5;
+  --muted-foreground: #7a6567;
+  --accent: #044040;
+  --accent-foreground: #ffffff;
+  --destructive: #d32f2f;
+  --destructive-foreground: #ffffff;
+  --border: #d4a5a8;
+  --input: transparent;
+  --input-background: #ffffff;
+  --switch-background: #cbced4;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: #8C1F28;
+  --chart-1: #8C1F28;
+  --chart-2: #044040;
+  --chart-3: #a63942;
+  --chart-4: #065656;
+  --chart-5: #b84555;
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #591C21;
+  --sidebar-primary: #8C1F28;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8f5f5;
+  --sidebar-accent-foreground: #044040;
+  --sidebar-border: #d4a5a8;
+  --sidebar-ring: #8C1F28;
+}
+
+.dark {
+  --background: #0d0506;
+  --foreground: #F2F2F2;
+  --card: #591C21;
+  --card-foreground: #F2F2F2;
+  --popover: #591C21;
+  --popover-foreground: #F2F2F2;
+  --primary: #8C1F28;
+  --primary-foreground: #F2F2F2;
+  --secondary: #044040;
+  --secondary-foreground: #F2F2F2;
+  --muted: #3d1418;
+  --muted-foreground: #b8a8aa;
+  --accent: #044040;
+  --accent-foreground: #F2F2F2;
+  --destructive: #d32f2f;
+  --destructive-foreground: #F2F2F2;
+  --border: #8C1F28;
+  --input: #3d1418;
+  --input-background: #3d1418;
+  --ring: #8C1F28;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: #8C1F28;
+  --chart-2: #044040;
+  --chart-3: #a63942;
+  --chart-4: #065656;
+  --chart-5: #b84555;
+  --sidebar: #1a0a0c;
+  --sidebar-foreground: #F2F2F2;
+  --sidebar-primary: #8C1F28;
+  --sidebar-primary-foreground: #F2F2F2;
+  --sidebar-accent: #044040;
+  --sidebar-accent-foreground: #F2F2F2;
+  --sidebar-border: #591C21;
+  --sidebar-ring: #8C1F28;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
