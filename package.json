@@ -1,0 +1,14 @@
+{
+  "name": "monorepo-dev-runner",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c \"green,blue\" \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "python -m uvicorn src.api_main:app --host 127.0.0.1 --port 8001 --reload",
+    "dev:web": "sh -c 'cd apps/web && NEXT_PUBLIC_API_BASE=http://127.0.0.1:8001 NEXT_PUBLIC_API_WS_BASE=ws://127.0.0.1:8001 node node_modules/.bin/next dev -p 3000'"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}
+
