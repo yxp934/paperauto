@@ -1,0 +1,83 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - heading "Video Generator" [level=1] [ref=e5]
+        - paragraph [ref=e6]: Pipeline Management
+      - navigation [ref=e7]:
+        - link "Dashboard" [ref=e8] [cursor=pointer]:
+          - /url: /
+          - img [ref=e9]
+          - generic [ref=e14]: Dashboard
+        - link "Generate" [ref=e15] [cursor=pointer]:
+          - /url: /generate
+          - img [ref=e16]
+          - generic [ref=e18]: Generate
+        - link "Slides Preview" [ref=e19] [cursor=pointer]:
+          - /url: /slides
+          - img [ref=e20]
+          - generic [ref=e24]: Slides Preview
+        - link "Video Output" [ref=e25] [cursor=pointer]:
+          - /url: /video
+          - img [ref=e26]
+          - generic [ref=e29]: Video Output
+        - link "Results" [ref=e30] [cursor=pointer]:
+          - /url: /results
+          - img [ref=e31]
+          - generic [ref=e33]: Results
+        - link "Settings" [ref=e34] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e35]
+          - generic [ref=e38]: Settings
+        - link "Logs" [ref=e39] [cursor=pointer]:
+          - /url: /logs
+          - img [ref=e40]
+          - generic [ref=e43]: Logs
+        - link "Health & Admin" [ref=e44] [cursor=pointer]:
+          - /url: /health
+          - img [ref=e45]
+          - generic [ref=e47]: Health & Admin
+      - generic [ref=e49]:
+        - generic [ref=e50]: Version 2.1.0
+        - generic [ref=e51]: © 2025 Video Gen
+    - main [ref=e53]:
+      - generic [ref=e54]:
+        - generic [ref=e55]:
+          - heading "Generate" [level=1] [ref=e56]
+          - paragraph [ref=e57]: Configure and run the video generation pipeline
+        - button "Start Pipeline" [ref=e58] [cursor=pointer]
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - heading "Mode" [level=2] [ref=e61]
+          - generic [ref=e62]:
+            - button "demo" [ref=e63] [cursor=pointer]
+            - button "complete" [ref=e64] [cursor=pointer]
+            - button "single" [ref=e65] [cursor=pointer]
+            - button "slides" [ref=e66] [cursor=pointer]
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - checkbox "test_mode" [checked] [ref=e69]
+              - generic [ref=e70]: test_mode
+            - generic [ref=e71]:
+              - checkbox "export_pptx" [checked] [ref=e72]
+              - generic [ref=e73]: export_pptx
+            - generic [ref=e74]:
+              - checkbox "upload_video" [ref=e75]
+              - generic [ref=e76]: upload_video
+        - generic [ref=e77]:
+          - heading "Status" [level=2] [ref=e78]
+          - generic [ref=e79]: "Job: 1760259367357"
+          - generic [ref=e80]: "State: completed"
+      - generic [ref=e82]:
+        - heading "Live Logs" [level=2] [ref=e83]
+        - generic [ref=e84]: No logs yet.
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - heading "Video" [level=2] [ref=e87]
+          - generic [ref=e88]: No video
+        - heading "Slides" [level=2] [ref=e90]
+  - alert [ref=e91]
+```
