@@ -7,7 +7,7 @@ const BASE = process.env.E2E_BASE_URL || 'http://localhost:3000'
 test('dashboard renders and screenshot', async ({ page }) => {
   await page.goto(`${BASE}/dashboard`)
   await page.waitForLoadState('networkidle')
-  await expect(page.getByText('Dashboard')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
   await page.screenshot({ path: 'test-artifacts/dashboard.png', fullPage: true })
 })
 
@@ -29,8 +29,8 @@ test('generate demo flow with screenshots', async ({ page }) => {
   await expect(page.getByText(/Starting|Running|pipeline/i).first()).toBeVisible({ timeout: 30000 })
   await page.screenshot({ path: 'test-artifacts/generate-running.png', fullPage: true })
 
-  // wait for video or slides to appear
-  await page.waitForFunction(() => !!document.querySelector('video, img'), { timeout: 180000 })
+  // wait for explicit succeeded state to avoid flakiness
+  await expect(page.getByText(/State:\s*succeeded/i)).toBeVisible({ timeout: 180000 })
   await page.screenshot({ path: 'test-artifacts/generate-done.png', fullPage: true })
 })
 

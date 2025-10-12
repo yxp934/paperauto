@@ -68,10 +68,13 @@ export default function GeneratePage() {
     ws.onopen = () => setConnecting(false);
     ws.onmessage = (e) => {
       try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === "log") setLogs((prev) => [...prev, msg.message]);
-        if (msg.type === "status") setJob((j) => j ? { ...j, status: msg.status, progress: msg.progress, message: msg.message, result: msg.result || j.result } : j);
-      } catch { /* ignore */ }
+        const msg = JSON.parse(e.data as string);
+        if (msg?.type === "log" && msg?.message) setLogs((prev) => [...prev, String(msg.message)]);
+        if (msg?.type === "status") setJob((j) => j ? { ...j, status: msg.status, progress: msg.progress, message: msg.message, result: msg.result || j.result } : j);
+      } catch {
+        // Fallback: treat raw text messages as logs for dev stub backend
+        setLogs((prev) => [...prev, String(e.data)]);
+      }
     };
     ws.onclose = () => setConnecting(false);
   }, [wsBase]);

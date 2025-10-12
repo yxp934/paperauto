@@ -1,0 +1,182 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - heading "Video Generator" [level=1] [ref=e5]
+        - paragraph [ref=e6]: Pipeline Management
+      - navigation [ref=e7]:
+        - link "Dashboard" [ref=e8] [cursor=pointer]:
+          - /url: /
+          - img [ref=e9]
+          - generic [ref=e14]: Dashboard
+        - link "Generate" [ref=e15] [cursor=pointer]:
+          - /url: /generate
+          - img [ref=e16]
+          - generic [ref=e18]: Generate
+        - link "Slides Preview" [ref=e19] [cursor=pointer]:
+          - /url: /slides
+          - img [ref=e20]
+          - generic [ref=e24]: Slides Preview
+        - link "Video Output" [ref=e25] [cursor=pointer]:
+          - /url: /video
+          - img [ref=e26]
+          - generic [ref=e29]: Video Output
+        - link "Results" [ref=e30] [cursor=pointer]:
+          - /url: /results
+          - img [ref=e31]
+          - generic [ref=e33]: Results
+        - link "Settings" [ref=e34] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e35]
+          - generic [ref=e38]: Settings
+        - link "Logs" [ref=e39] [cursor=pointer]:
+          - /url: /logs
+          - img [ref=e40]
+          - generic [ref=e43]: Logs
+        - link "Health & Admin" [ref=e44] [cursor=pointer]:
+          - /url: /health
+          - img [ref=e45]
+          - generic [ref=e47]: Health & Admin
+      - generic [ref=e49]:
+        - generic [ref=e50]: Version 2.1.0
+        - generic [ref=e51]: © 2025 Video Gen
+    - generic [ref=e53]:
+      - generic [ref=e54]:
+        - generic [ref=e55]:
+          - heading "Slides Preview" [level=1] [ref=e56]
+          - paragraph [ref=e57]: Gallery view of generated slides
+        - generic [ref=e58]:
+          - button "Export PPTX" [ref=e59] [cursor=pointer]:
+            - img [ref=e60]
+            - text: Export PPTX
+          - button "Download All Images" [active] [ref=e64] [cursor=pointer]:
+            - img [ref=e65]
+            - text: Download All Images
+      - generic [ref=e69]:
+        - generic [ref=e70]:
+          - generic [ref=e71]: Paper Title
+          - generic [ref=e72]: Quantum Computing Advances in 2024
+        - generic [ref=e73]:
+          - generic [ref=e74]: Total Slides
+          - generic [ref=e75]: "8"
+        - generic [ref=e76]:
+          - generic [ref=e77]: Generation Time
+          - generic [ref=e78]: 8m 24s
+      - generic [ref=e79]:
+        - generic [ref=e80] [cursor=pointer]:
+          - generic [ref=e81]:
+            - img "Title Slide" [ref=e82]
+            - generic [ref=e83]:
+              - button "View Full" [ref=e84]:
+                - img [ref=e85]
+                - text: View Full
+              - button [ref=e90]:
+                - img [ref=e91]
+          - generic [ref=e94]:
+            - generic [ref=e95]:
+              - generic [ref=e96]: Slide 1
+              - generic [ref=e97]: Introduction
+            - generic [ref=e98]: Title Slide
+        - generic [ref=e99] [cursor=pointer]:
+          - generic [ref=e100]:
+            - img "Overview" [ref=e101]
+            - generic [ref=e102]:
+              - button "View Full" [ref=e103]:
+                - img [ref=e104]
+                - text: View Full
+              - button [ref=e109]:
+                - img [ref=e110]
+          - generic [ref=e113]:
+            - generic [ref=e114]:
+              - generic [ref=e115]: Slide 2
+              - generic [ref=e116]: Introduction
+            - generic [ref=e117]: Overview
+        - generic [ref=e118] [cursor=pointer]:
+          - generic [ref=e119]:
+            - img "Key Concepts" [ref=e120]
+            - generic [ref=e121]:
+              - button "View Full" [ref=e122]:
+                - img [ref=e123]
+                - text: View Full
+              - button [ref=e128]:
+                - img [ref=e129]
+          - generic [ref=e132]:
+            - generic [ref=e133]:
+              - generic [ref=e134]: Slide 3
+              - generic [ref=e135]: Background
+            - generic [ref=e136]: Key Concepts
+        - generic [ref=e137] [cursor=pointer]:
+          - generic [ref=e138]:
+            - img "Methodology" [ref=e139]
+            - generic [ref=e140]:
+              - button "View Full" [ref=e141]:
+                - img [ref=e142]
+                - text: View Full
+              - button [ref=e147]:
+                - img [ref=e148]
+          - generic [ref=e151]:
+            - generic [ref=e152]:
+              - generic [ref=e153]: Slide 4
+              - generic [ref=e154]: Methods
+            - generic [ref=e155]: Methodology
+        - generic [ref=e156] [cursor=pointer]:
+          - generic [ref=e157]:
+            - img "Results" [ref=e158]
+            - generic [ref=e159]:
+              - button "View Full" [ref=e160]:
+                - img [ref=e161]
+                - text: View Full
+              - button [ref=e166]:
+                - img [ref=e167]
+          - generic [ref=e170]:
+            - generic [ref=e171]:
+              - generic [ref=e172]: Slide 5
+              - generic [ref=e173]: Results
+            - generic [ref=e174]: Results
+        - generic [ref=e175] [cursor=pointer]:
+          - generic [ref=e176]:
+            - img "Discussion" [ref=e177]
+            - generic [ref=e178]:
+              - button "View Full" [ref=e179]:
+                - img [ref=e180]
+                - text: View Full
+              - button [ref=e185]:
+                - img [ref=e186]
+          - generic [ref=e189]:
+            - generic [ref=e190]:
+              - generic [ref=e191]: Slide 6
+              - generic [ref=e192]: Discussion
+            - generic [ref=e193]: Discussion
+        - generic [ref=e194] [cursor=pointer]:
+          - generic [ref=e195]:
+            - img "Conclusions" [ref=e196]
+            - generic [ref=e197]:
+              - button "View Full" [ref=e198]:
+                - img [ref=e199]
+                - text: View Full
+              - button [ref=e204]:
+                - img [ref=e205]
+          - generic [ref=e208]:
+            - generic [ref=e209]:
+              - generic [ref=e210]: Slide 7
+              - generic [ref=e211]: Conclusion
+            - generic [ref=e212]: Conclusions
+        - generic [ref=e213] [cursor=pointer]:
+          - generic [ref=e214]:
+            - img "Future Work" [ref=e215]
+            - generic [ref=e216]:
+              - button "View Full" [ref=e217]:
+                - img [ref=e218]
+                - text: View Full
+              - button [ref=e223]:
+                - img [ref=e224]
+          - generic [ref=e227]:
+            - generic [ref=e228]:
+              - generic [ref=e229]: Slide 8
+              - generic [ref=e230]: Conclusion
+            - generic [ref=e231]: Future Work
+  - alert [ref=e232]
+```

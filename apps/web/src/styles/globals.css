@@ -143,8 +143,15 @@ html { font-size: var(--font-size); }
 }
 
 @layer base {
-  * {
-    @apply border-border ring-1 ring-[var(--ring)] ring-opacity-50;
+  /* Remove global rings on all elements; keep only default border color context */
+  *, *::before, *::after {
+    border-color: var(--border);
+  }
+  /* Accessible focus indicator without forcing rings everywhere */
+  :focus-visible {
+    outline: 2px solid oklch(0.6 0.1 25 / 0.6);
+    outline-color: var(--ring);
+    outline-offset: 2px;
   }
   body {
     @apply bg-background text-foreground;
