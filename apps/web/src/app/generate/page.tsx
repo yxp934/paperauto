@@ -33,6 +33,7 @@ export default function GeneratePage() {
   const [job, setJob] = useState<JobStatus | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [connecting, setConnecting] = useState(false);
+  const [recentPaper, setRecentPaper] = useState<{id?: string, title?: string, url?: string, authors?: string[]}>({});
   const wsRef = useRef<WebSocket | null>(null);
 
   const toStatic = (p?: string | null) => {
@@ -70,9 +71,17 @@ export default function GeneratePage() {
       try {
         const msg = JSON.parse(e.data as string);
         if (msg?.type === "log" && msg?.message) setLogs((prev) => [...prev, String(msg.message)]);
-        if (msg?.type === "status") setJob((j) => j ? { ...j, status: msg.status, progress: msg.progress, message: msg.message, result: msg.result || j.result } : j);
+        if (msg?.type === "status") {
+          const nextStatus = msg.status === 'done' ? 'succeeded' : msg.status;
+          setJob((j) => j ? { ...j, status: nextStatus, progress: msg.progress, message: msg.message, result: msg.result || j.result } : j);
+          if (['succeeded','failed','cancelled'].includes(nextStatus)) {
+            // pull latest outputs as soon as WS signals completion
+            (async () => { try { await refreshLatest(); } catch {} })();
+          }
+        }
+        if (msg?.type === "progress") setJob((j) => j ? { ...j, status: j.status || "running", progress: typeof msg.progress === 'number' ? msg.progress : j.progress, message: msg.message || msg.stage || j.message } : j);
+        if (msg?.type === "paper") setRecentPaper({ id: msg.id, title: msg.title, url: msg.url, authors: msg.authors });
       } catch {
-        // Fallback: treat raw text messages as logs for dev stub backend
         setLogs((prev) => [...prev, String(e.data)]);
       }
     };
@@ -174,9 +183,18 @@ export default function GeneratePage() {
         </div>
       </section>
 
-      {/* Logs */}
+      {/* Logs + Recent Paper */}
       <section className="p-4 rounded-md border bg-card">
-        <h2>Live Logs</h2>
+        <div className="flex items-center justify-between">
+          <h2>Live Logs</h2>
+          {recentPaper?.title && (
+            <div className="ml-4 px-3 py-2 rounded border text-sm bg-input-background">
+              <div className="font-medium truncate max-w-[480px]" title={recentPaper.title}>{recentPaper.title}</div>
+              <div className="text-muted-foreground truncate max-w-[480px]">{recentPaper.id} {recentPaper.authors?.length ? `• ${recentPaper.authors.join(', ')}` : ''}</div>
+              {recentPaper.url && <a className="text-primary underline" href={recentPaper.url} target="_blank" rel="noreferrer">arXiv</a>}
+            </div>
+          )}
+        </div>
         <div className="mt-2 h-64 overflow-auto rounded bg-muted/30 p-2 text-sm font-mono whitespace-pre-wrap">
           {logs.length ? logs.join("\n") : "No logs yet."}
         </div>

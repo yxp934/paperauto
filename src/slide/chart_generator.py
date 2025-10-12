@@ -8,10 +8,11 @@ from typing import Dict, List, Any, Optional, Union, Tuple
 import logging
 import io
 from PIL import Image
+import matplotlib as mpl
+mpl.use('Agg')  # Use non-GUI backend for server/threaded rendering
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
-import matplotlib as mpl
 from matplotlib import rcParams
 
 logger = logging.getLogger(__name__)
