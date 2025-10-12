@@ -38,6 +38,24 @@ test.describe('Video Gen UI basic flows', () => {
     await expect(page.locator('h1', { hasText: 'Results' })).toBeVisible()
   })
 
+  test('navigate to Settings / Health / Slides / Video', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForFunction(() => getComputedStyle(document.body).display !== 'none')
+
+    await page.getByText('Settings', { exact: true }).click()
+    await expect(page.locator('h1', { hasText: 'Settings' })).toBeVisible()
+
+    await page.getByText('Health & Admin', { exact: true }).click()
+    await expect(page.locator('h1', { hasText: 'Health & Admin' })).toBeVisible()
+
+    await page.getByText('Slides Preview', { exact: true }).click()
+    await expect(page.locator('h1', { hasText: 'Slides Preview' })).toBeVisible()
+
+    await page.getByText('Video Output', { exact: true }).click()
+    await expect(page.locator('h1', { hasText: 'Video Output' })).toBeVisible()
+  })
+
   test('results shows recent jobs and logs page streams', async ({ page }) => {
     // ensure a job exists
     const jobId = await createJob(page)

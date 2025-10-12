@@ -1,0 +1,110 @@
+{
+  "paper_id": "2510.05034",
+  "image_assets": [
+    {
+      "path": "./temp/images/2510.05034_section_01_img_01.png",
+      "section_index": 0,
+      "variant_index": 0,
+      "prompt": "A dynamic, modern tech illustration showing a fragmented digital landscape transforming into a structured, organized framework, with glowing neural network pathways connecting scattered video frames and temporal sequences. Holographic elements depict reinforcement learning feedback loops and multi-modal data streams merging into a cohesive AI model. The scene is set against a dark, futuristic background with vibrant blue and purple light accents, showcasing data visualizations, 3D geometric structures, and abstract representations of video timelines. Style: clean, educational infographic with a cinematic sci-fi aesthetic, high detail, professional digital art.",
+      "is_fallback": false,
+      "is_cover": false
+    },
+    {
+      "path": "./temp/images/2510.05034_section_02_img_01.png",
+      "section_index": 1,
+      "variant_index": 0,
+      "prompt": "A modern, technical diagram showing three interconnected pillars rising from a foundation labeled 'Pre-trained Video-LMM', with each pillar representing one post-training method: supervised fine-tuning (showing labeled video frames), reinforcement learning (showing reward signals and policy updates), and test-time scaling (showing dynamic adaptation mechanisms). The diagram should include visual elements representing video understanding challenges like temporal sequences and spatial object tracking.",
+      "is_fallback": false,
+      "is_cover": false
+    },
+    {
+      "path": "./temp/images/2510.05034_section_02_img_02.png",
+      "section_index": 1,
+      "variant_index": 1,
+      "prompt": "A modern, technical diagram showing three interconnected pillars rising from a foundation labeled 'Pre-trained Video-LMM', with each pillar representing one post-training method: supervised fine-tuning (showing labeled video frames), reinforcement learning (showing reward signals and policy updates), and test-time scaling (showing dynamic adaptation mechanisms). The diagram should include visual elements representing video understanding challenges like temporal sequences and spatial object tracking., alternative perspective with focus on results",
+      "is_fallback": false,
+      "is_cover": false
+    },
+    {
+      "path": "./temp/images/2510.05034_section_03_img_01.png",
+      "section_index": 2,
+      "variant_index": 0,
+      "prompt": "A modern, abstract visualization showing three interconnected challenges: on the left, a video timeline with highlighted spatial regions showing object detection and temporal progression; in the center, a long video sequence with key frames extracted and connected by flowing lines; on the right, multiple data streams (visual waves, audio waveforms, text blocks) merging into a central processing core, with arrows indicating optimization and enhancement flowing downward into an improved video reasoning engine",
+      "is_fallback": false,
+      "is_cover": false
+    },
+    {
+      "path": "./temp/images/2510.05034_section_03_img_02.png",
+      "section_index": 2,
+      "variant_index": 1,
+      "prompt": "A modern, abstract visualization showing three interconnected challenges: on the left, a video timeline with highlighted spatial regions showing object detection and temporal progression; in the center, a long video sequence with key frames extracted and connected by flowing lines; on the right, multiple data streams (visual waves, audio waveforms, text blocks) merging into a central processing core, with arrows indicating optimization and enhancement flowing downward into an improved video reasoning engine, alternative perspective with focus on results",
+      "is_fallback": false,
+      "is_cover": false
+    },
+    {
+      "path": "./temp/images/2510.05034_section_04_img_01.png",
+      "section_index": 3,
+      "variant_index": 0,
+      "prompt": "A conceptual diagram showing three interconnected pillars rising from a foundation labeled 'Video Foundation Model'. The left pillar represents 'Supervised Fine-Tuning' with visual elements showing a basketball player's shooting sequence breaking down into individual frames with reasoning arrows. The center pillar depicts 'Reinforcement Learning' with reward signals flowing through a neural network architecture, highlighting temporal reward mechanisms. The right pillar illustrates 'Test-Time Scaling' showing multiple video frames being processed simultaneously with enhanced computational resources. All three pillars connect to a unified output structure at the top, with data flow arrows showing their synergistic relationship.",
+      "is_fallback": false,
+      "is_cover": false
+    },
+    {
+      "path": "./temp/images/2510.05034_section_04_img_02.png",
+      "section_index": 3,
+      "variant_index": 1,
+      "prompt": "A conceptual diagram showing three interconnected pillars rising from a foundation labeled 'Video Foundation Model'. The left pillar represents 'Supervised Fine-Tuning' with visual elements showing a basketball player's shooting sequence breaking down into individual frames with reasoning arrows. The center pillar depicts 'Reinforcement Learning' with reward signals flowing through a neural network architecture, highlighting temporal reward mechanisms. The right pillar illustrates 'Test-Time Scaling' showing multiple video frames being processed simultaneously with enhanced computational resources. All three pillars connect to a unified output structure at the top, with data flow arrows showing their synergistic relationship., alternative perspective with focus on results",
+      "is_fallback": false,
+      "is_cover": false
+    },
+    {
+      "path": "./temp/images/2510.05034_section_05_img_01.png",
+      "section_index": 4,
+      "variant_index": 0,
+      "prompt": "A sophisticated diagram showing the evolution from basic video perception to advanced reasoning, with interconnected nodes representing spatiotemporal analysis, multimodal fusion, and domain-specific applications. The visual should show progression from simple pattern recognition on the left to complex logical reasoning networks on the right, with icons representing surveillance, human-computer interaction, medical imaging, and industrial inspection integrated into the flow.",
+      "is_fallback": false,
+      "is_cover": false
+    },
+    {
+      "path": "./temp/images/2510.05034_section_05_img_02.png",
+      "section_index": 4,
+      "variant_index": 1,
+      "prompt": "A sophisticated diagram showing the evolution from basic video perception to advanced reasoning, with interconnected nodes representing spatiotemporal analysis, multimodal fusion, and domain-specific applications. The visual should show progression from simple pattern recognition on the left to complex logical reasoning networks on the right, with icons representing surveillance, human-computer interaction, medical imaging, and industrial inspection integrated into the flow., alternative perspective with focus on results",
+      "is_fallback": false,
+      "is_cover": false
+    },
+    {
+      "path": "./temp/images/2510.05034_section_06_img_01.png",
+      "section_index": 5,
+      "variant_index": 0,
+      "prompt": "A futuristic flowchart showing a central video foundation model branching into three main development paths: one showing temporal reward functions with animated timeline indicators, another depicting scalable processing of long video sequences with efficiency metrics, and the third illustrating multimodal fusion of visual and audio streams with precise alignment markers. The diagram should have clean lines, glowing connection points, and subtle motion indicators.",
+      "is_fallback": false,
+      "is_cover": false
+    },
+    {
+      "path": "./temp/images/2510.05034_section_06_img_02.png",
+      "section_index": 5,
+      "variant_index": 1,
+      "prompt": "A futuristic flowchart showing a central video foundation model branching into three main development paths: one showing temporal reward functions with animated timeline indicators, another depicting scalable processing of long video sequences with efficiency metrics, and the third illustrating multimodal fusion of visual and audio streams with precise alignment markers. The diagram should have clean lines, glowing connection points, and subtle motion indicators., alternative perspective with focus on results",
+      "is_fallback": false,
+      "is_cover": false
+    },
+    {
+      "path": "./temp/images/2510.05034_section_07_img_01.png",
+      "section_index": 6,
+      "variant_index": 0,
+      "prompt": "A modern, abstract visualization showing three interconnected pillars rising from a foundation, each pillar representing supervised fine-tuning, reinforcement learning, and test-time scaling. The pillars support a complex network of interconnected nodes and pathways that transition from simple geometric shapes at the base to intricate 3D structures at the top, symbolizing the progression from basic perception to complex reasoning. Video frames and temporal sequences flow through the structure, with arrows indicating upward progression and transformation.",
+      "is_fallback": false,
+      "is_cover": false
+    },
+    {
+      "path": "./temp/images/2510.05034_section_07_img_02.png",
+      "section_index": 6,
+      "variant_index": 1,
+      "prompt": "A modern, abstract visualization showing three interconnected pillars rising from a foundation, each pillar representing supervised fine-tuning, reinforcement learning, and test-time scaling. The pillars support a complex network of interconnected nodes and pathways that transition from simple geometric shapes at the base to intricate 3D structures at the top, symbolizing the progression from basic perception to complex reasoning. Video frames and temporal sequences flow through the structure, with arrows indicating upward progression and transformation., alternative perspective with focus on results",
+      "is_fallback": false,
+      "is_cover": false
+    }
+  ],
+  "timestamp": "1759812604.4271326"
+}

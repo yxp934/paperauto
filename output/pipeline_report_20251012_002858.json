@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-10-12T00:28:58.414278",
+  "summary": {
+    "total_papers": 1,
+    "successful_papers": 1,
+    "failed_papers": 0,
+    "success_rate": "100.0%",
+    "total_duration": 507.0,
+    "total_duration_formatted": "8分27秒"
+  },
+  "papers": [
+    {
+      "title": "Agent Learning via Early Experience",
+      "status": "success",
+      "video_path": "./output/2510.08558_Agent Learning via Early Experience.mp4",
+      "video_info": {
+        "path": "./output/2510.08558_Agent Learning via Early Experience.mp4",
+        "duration": 507.0,
+        "duration_formatted": "08:27",
+        "file_size": 17046665,
+        "file_size_mb": 16.26,
+        "resolution": [
+          1536,
+          1024
+        ]
+      },
+      "timestamp": "2025-10-12T00:28:58.406493"
+    }
+  ]
+}

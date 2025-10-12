@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-10-09T01:34:24.397223",
+  "summary": {
+    "total_papers": 1,
+    "successful_papers": 1,
+    "failed_papers": 0,
+    "success_rate": "100.0%",
+    "total_duration": 575.291667,
+    "total_duration_formatted": "9分35秒"
+  },
+  "papers": [
+    {
+      "title": "TaTToo: Tool-Grounded Thinking PRM for Test-Time Scaling in Tabular Reasoning",
+      "status": "success",
+      "video_path": "./output/2510.06217_TaTToo_ Tool-Grounded Thinking PRM for Test-Time Scaling in Tabular Reasoning.mp4",
+      "video_info": {
+        "path": "./output/2510.06217_TaTToo_ Tool-Grounded Thinking PRM for Test-Time Scaling in Tabular Reasoning.mp4",
+        "duration": 575.291667,
+        "duration_formatted": "09:35",
+        "file_size": 10950835,
+        "file_size_mb": 10.44,
+        "resolution": [
+          1536,
+          1024
+        ]
+      },
+      "timestamp": "2025-10-09T01:34:24.387347"
+    }
+  ]
+}

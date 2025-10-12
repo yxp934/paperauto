@@ -1,0 +1,91 @@
+1
+00:00:00,000 --> 00:00:05,000
+AI Research Explained
+
+2
+00:00:00,000 --> 00:00:18,910
+当业界争相堆砌千亿参数时，150亿参数的Apriel-15B竟在单GPU上追平Gemini和Claude！它如何通过三阶段训练法，用数据智慧替代算力暴力，在十大图像基准测试中实现52分标杆成绩？
+
+3
+00:00:18,910 --> 00:00:39,335
+Today we'll explore a groundbreaking AI research breakthrough -
+
+4
+00:00:38,835 --> 00:00:59,260
+Apriel-1.5-15B-Thinker. What makes this work particularly exciting is how it
+
+5
+00:00:58,760 --> 00:01:19,185
+demonstrates that achieving cutting-edge multimodal reasoning capabilities
+
+6
+00:01:18,685 --> 00:01:38,609
+doesn't necessarily require massive computing clusters or extensive parameter
+
+7
+00:01:38,609 --> 00:02:17,704
+Current multimodal large models face a significant contradiction: improvements
+
+8
+00:02:17,204 --> 00:02:56,299
+in model performance often come with dramatic parameter expansion and
+
+9
+00:02:55,800 --> 00:03:34,895
+exponential growth in computational requirements. This means most cutting-edge
+
+10
+00:03:34,394 --> 00:04:12,990
+models can only run on large computing clusters, severely limiting their
+
+11
+00:04:12,990 --> 00:04:40,912
+April-1.5-15B-Thinker's core innovation lies in its progressive three-stage
+
+12
+00:04:40,412 --> 00:05:08,335
+training framework. The first stage involves depth expansion, scaling the base
+
+13
+00:05:07,835 --> 00:05:35,757
+model from 12 billion to 15 billion parameters. This isn't merely adding
+
+14
+00:05:35,257 --> 00:06:02,680
+parameters but involves specific architectural adjustments that significantly
+
+15
+00:06:02,680 --> 00:06:29,204
+In performance evaluation, Apriel-1.5-15B-Thinker achieved a score of 52 on the
+
+16
+00:06:28,704 --> 00:06:55,229
+Artificial Analysis Intelligence Index, matching the performance of
+
+17
+00:06:54,730 --> 00:07:21,254
+DeepSeek-R1-0528. Even more impressive is that across ten image benchmark tests,
+
+18
+00:07:20,754 --> 00:07:46,779
+its average performance was within 5 percentage points of both Gemini-2.5-Flash
+
+19
+00:07:46,779 --> 00:08:03,907
+This work holds significant academic importance by redefining the development
+
+20
+00:08:03,407 --> 00:08:20,534
+path for multimodal models. It demonstrates that sophisticated training strategy
+
+21
+00:08:20,034 --> 00:08:37,162
+design can achieve cutting-edge performance with limited computational
+
+22
+00:08:36,662 --> 00:08:53,289
+resources, challenging the traditional notion that bigger is always better. This
+
+23
+00:08:53,289 --> 00:08:56,289
+Thanks for watching!

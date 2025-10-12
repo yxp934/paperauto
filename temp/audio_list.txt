@@ -1,0 +1,6 @@
+file '/Users/yxp/Documents/ghpaperauto/temp/audio/2510.08558_section_01.mp3'
+file '/Users/yxp/Documents/ghpaperauto/temp/audio/2510.08558_section_02.mp3'
+file '/Users/yxp/Documents/ghpaperauto/temp/audio/2510.08558_section_03.mp3'
+file '/Users/yxp/Documents/ghpaperauto/temp/audio/2510.08558_section_05.mp3'
+file '/Users/yxp/Documents/ghpaperauto/temp/audio/2510.08558_section_06.mp3'
+file '/Users/yxp/Documents/ghpaperauto/temp/audio/2510.08558_section_07.mp3'

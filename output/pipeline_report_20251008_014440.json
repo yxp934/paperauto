@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-10-08T01:44:40.178032",
+  "summary": {
+    "total_papers": 1,
+    "successful_papers": 1,
+    "failed_papers": 0,
+    "success_rate": "100.0%",
+    "total_duration": 666.583333,
+    "total_duration_formatted": "11分6秒"
+  },
+  "papers": [
+    {
+      "title": "Paper2Video: Automatic Video Generation from Scientific Papers",
+      "status": "success",
+      "video_path": "./output/2510.05096_Paper2Video_ Automatic Video Generation from Scientific Papers.mp4",
+      "video_info": {
+        "path": "./output/2510.05096_Paper2Video_ Automatic Video Generation from Scientific Papers.mp4",
+        "duration": 666.583333,
+        "duration_formatted": "11:06",
+        "file_size": 21909904,
+        "file_size_mb": 20.89,
+        "resolution": [
+          1536,
+          1024
+        ]
+      },
+      "timestamp": "2025-10-08T01:44:40.173088"
+    }
+  ]
+}

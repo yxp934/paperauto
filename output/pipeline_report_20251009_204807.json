@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-10-09T20:48:07.214045",
+  "summary": {
+    "total_papers": 1,
+    "successful_papers": 1,
+    "failed_papers": 0,
+    "success_rate": "100.0%",
+    "total_duration": 232.583333,
+    "total_duration_formatted": "3分52秒"
+  },
+  "papers": [
+    {
+      "title": "Cache-to-Cache: Direct Semantic Communication Between Large Language Models",
+      "status": "success",
+      "video_path": "./output/2510.03215_Cache-to-Cache_ Direct Semantic Communication Between Large Language Models.mp4",
+      "video_info": {
+        "path": "./output/2510.03215_Cache-to-Cache_ Direct Semantic Communication Between Large Language Models.mp4",
+        "duration": 232.583333,
+        "duration_formatted": "03:52",
+        "file_size": 5872445,
+        "file_size_mb": 5.6,
+        "resolution": [
+          1536,
+          1024
+        ]
+      },
+      "timestamp": "2025-10-09T20:48:07.205122"
+    }
+  ]
+}

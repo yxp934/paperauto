@@ -1,0 +1,44 @@
+[
+  {
+    "section_index": 0,
+    "title": "【吸引开场】（20秒）",
+    "text": "当业界争相堆砌千亿参数时，150亿参数的Apriel-15B竟在单GPU上追平Gemini和Claude！它如何通过三阶段训练法，用数据智慧替代算力暴力，在十大图像基准测试中实现标杆成绩？",
+    "audio_path": "./temp/audio/2510.01141_section_01.mp3",
+    "duration": 18.91
+  },
+  {
+    "section_index": 2,
+    "title": "【背景介绍】",
+    "text": "Current multimodal large models face a significant contradiction: improvements in model performance often come with dramatic parameter expansion and exponential growth in computational requirements. This means most cutting-edge models can only run on large computing clusters, severely limiting their deployment in resource-constrained environments. Industry-standard methods like reinforcement learning and human feedback optimization, while improving performance, substantially increase training complexity and computational costs. In this context, our research team posed a critical question: Can we achieve competitive multimodal reasoning capabilities through more sophisticated training strategies rather than simply scaling model size? Apriel-1.5-15B-Thinker is our solution to this challenge. Building upon the existing Pixtral-12B model, it achieves performance comparable to mainstream large models while maintaining a relatively compact parameter scale through systematic capability expansion and optimization.",
+    "audio_path": "./temp/audio/2510.01141_section_03.mp3",
+    "duration": 79.7
+  },
+  {
+    "section_index": 3,
+    "title": "【技术原理详解】",
+    "text": "April-1.5-15B-Thinker's core innovation lies in its progressive three-stage training framework. The first stage involves depth expansion, scaling the base model from 12 billion to 15 billion parameters. This isn't merely adding parameters but involves specific architectural adjustments that significantly enhance the model's reasoning foundation without requiring full pre-training from scratch. The second stage of phased continuous pre-training is crucial to the method. First, the model trains on basic text and visual understanding tasks to establish a solid multimodal foundation. Then, through targeted synthetic data generation, it specifically enhances visual reasoning capabilities. This phase particularly focuses on three core challenges: spatial structure understanding, compositional reasoning, and fine-grained visual perception. For spatial structure, the model must accurately identify relative positional relationships between objects. In compositional understanding, it needs to analyze interactions among multiple elements in complex scenes. Fine-grained perception requires distinguishing subtle visual differences. The third stage employs high-quality supervised fine-tuning with carefully curated instruction-response pairs covering mathematics, programming assistance, scientific computing, and tool usage. Notably, the training data includes detailed explicit reasoning traces, enabling the model to not only provide answers but also demonstrate complete thought processes. A distinctive feature of the entire training pipeline is the complete avoidance of reinforcement learning and preference optimization, instead relying on data-centric continuous pre-training methods for capability enhancement. This approach resembles a student systematically building knowledge through structured curriculum learning rather than learning through extensive trial and error.",
+    "audio_path": "./temp/audio/2510.01141_section_04.mp3",
+    "duration": 154.38
+  },
+  {
+    "section_index": 4,
+    "title": "【性能表现与应用】",
+    "text": "In performance evaluation, Apriel-1.5-15B-Thinker achieved a score of 52 on the Artificial Analysis Intelligence Index, matching the performance of DeepSeek-R1-0528. Even more impressive is that across ten image benchmark tests, its average performance was within 5 percentage points of both Gemini-2.5-Flash and Claude Sonnet-3.7. Given that this was accomplished under single GPU deployment constraints, these results represent a significant milestone. The model's applications span multiple critical domains. In mathematical reasoning, it can solve complex problems while demonstrating the reasoning process. For programming assistance, it provides code generation and debugging suggestions. In scientific computing, it aids in data analysis and experimental design. For tool usage, it guides users through various software applications. And in image understanding and multimodal question answering, it excels at handling vision-language tasks. These capabilities make the model particularly suitable for deployment in resource-constrained environments requiring high-quality AI assistance, such as individual developer workstations, educational institution labs, and small-to-medium enterprise local deployments.",
+    "audio_path": "./temp/audio/2510.01141_section_05.mp3",
+    "duration": 109.69
+  },
+  {
+    "section_index": 5,
+    "title": "【意义影响与展望】",
+    "text": "This work holds significant academic importance by redefining the development path for multimodal models. It demonstrates that sophisticated training strategy design can achieve cutting-edge performance with limited computational resources, challenging the traditional notion that bigger is always better. This provides new perspectives for AI deployment in resource-sensitive scenarios. From an industrial standpoint, this efficient, low-resource model architecture paves the way for democratizing AI technology. Enterprises can achieve performance close to top-tier models without investing in massive computing infrastructure, significantly lowering the barrier to AI adoption. Looking ahead, future improvements may include further optimization of training strategies, exploration of more efficient architectural designs, and expansion of the model's multimodal understanding capabilities. There's particularly promising potential in combining synthetic data generation with continual pre-training methods. However, this technology still faces several challenges, such as how to further compress model scale without sacrificing performance, how to extend this approach to larger parameter models, and whether the current methods remain effective for extremely complex multimodal tasks, which requires further validation.",
+    "audio_path": "./temp/audio/2510.01141_section_06.mp3",
+    "duration": 104.1
+  },
+  {
+    "section_index": 6,
+    "title": "【总结】",
+    "text": "April-1.5-15B-Thinker achieves multimodal reasoning capabilities comparable to mainstream large models through its innovative progressive three-stage training approach, all within single GPU deployment constraints. The core contribution demonstrates that through a combination of depth scaling, phased continual pre-training, and high-quality supervised fine-tuning, it's possible to reach cutting-edge performance without relying on massive computational resources. This research opens new directions for multimodal AI development, particularly suited for researchers focusing on efficient computing and multimodal reasoning. For developers seeking to deploy high-quality AI applications in resource-constrained environments, this work provides crucial technical reference and practical guidance.",
+    "audio_path": "./temp/audio/2510.01141_section_07.mp3",
+    "duration": 66.51
+  }
+]

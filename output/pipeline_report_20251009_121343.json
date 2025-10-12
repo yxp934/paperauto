@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-10-09T12:13:43.640574",
+  "summary": {
+    "total_papers": 1,
+    "successful_papers": 1,
+    "failed_papers": 0,
+    "success_rate": "100.0%",
+    "total_duration": 586.0,
+    "total_duration_formatted": "9分46秒"
+  },
+  "papers": [
+    {
+      "title": "SHANKS: Simultaneous Hearing and Thinking for Spoken Language Models",
+      "status": "success",
+      "video_path": "./output/2510.06917_SHANKS_ Simultaneous Hearing and Thinking for Spoken Language Models.mp4",
+      "video_info": {
+        "path": "./output/2510.06917_SHANKS_ Simultaneous Hearing and Thinking for Spoken Language Models.mp4",
+        "duration": 586.0,
+        "duration_formatted": "09:46",
+        "file_size": 18938394,
+        "file_size_mb": 18.06,
+        "resolution": [
+          1536,
+          1024
+        ]
+      },
+      "timestamp": "2025-10-09T12:13:43.626709"
+    }
+  ]
+}

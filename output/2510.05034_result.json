@@ -1,0 +1,457 @@
+{
+  "paper": {
+    "id": "2510.05034",
+    "title": "Video-LMM Post-Training: A Deep Dive into Video Reasoning with Large Multimodal Models",
+    "authors": [
+      "Tang, Yunlong",
+      "Bi, Jing",
+      "Liu, Pinxin",
+      "Pan, Zhenyu",
+      "Tan, Zhangyun",
+      "Shen, Qianxiang",
+      "Liu, Jiani",
+      "Hua, Hang",
+      "Guo, Junjia",
+      "Xiao, Yunzhong",
+      "Huang, Chao",
+      "Wang, Zhiyuan",
+      "Liang, Susan",
+      "Liu, Xinyi",
+      "Song, Yizhi",
+      "Nie, Yuhe",
+      "Zhong, Jia-Xing",
+      "Li, Bozheng",
+      "Qi, Daiqing",
+      "Zeng, Ziyun",
+      "Vosoughi, Ali",
+      "Song, Luchuan",
+      "Zhang, Zeliang",
+      "Shimada, Daiki",
+      "Liu, Han",
+      "Luo, Jiebo",
+      "Xu, Chenliang"
+    ],
+    "description": "Video understanding represents the most challenging frontier in computer vision, requiring models to reason about complex spatiotemporal relationships, long-term dependencies, and multimodal evidence. The recent emergence of Video-Large Multimodal Models (Video-LMMs), which integrate visual encoders with powerful decoder-based language models, has demonstrated remarkable capabilities in video understanding tasks. However, the critical phase that transforms these models from basic perception systems into sophisticated reasoning engines, post-training, remains fragmented across the literature. This survey provides the first comprehensive examination of post-training methodologies for Video-LMMs, encompassing three fundamental pillars: supervised fine-tuning (SFT) with chain-of-thought, reinforcement learning (RL) from verifiable objectives, and test-time scaling (TTS) through enhanced inference computation. We present a structured taxonomy that clarifies the roles, interconnections, and video-specific adaptations of these techniques, addressing unique challenges such as temporal localization, spatiotemporal grounding, long video efficiency, and multimodal evidence integration. Through systematic analysis of representative methods, we synthesize key design principles, insights, and evaluation protocols while identifying critical open challenges in reward design, scalability, and cost-performance optimization. We further curate essential benchmarks, datasets, and metrics to facilitate rigorous assessment of post-training effectiveness. This survey aims to provide researchers and practitioners with a unified framework for advancing Video-LMM capabilities. Additional resources and updates are maintained at: this https URL",
+    "paper_url": "https://huggingface.co/papers/2510.05034",
+    "model_url": "https://arxiv.org/pdf/2510.05034",
+    "dataset_url": null,
+    "likes": 0,
+    "downloads": 0,
+    "created_at": "2025-10-06T00:00:00",
+    "tags": [],
+    "language": "en",
+    "paper_content": "Video understanding represents the most challenging frontier in computer vision, requiring models to reason about complex spatiotemporal relationships, long-term dependencies, and multimodal evidence. The recent emergence of Video-Large Multimodal Models (Video-LMMs), which integrate visual encoders with powerful decoder-based language models, has demonstrated remarkable capabilities in video understanding tasks. However, the critical phase that transforms these models from basic perception systems into sophisticated reasoning engines, post-training, remains fragmented across the literature. This survey provides the first comprehensive examination of post-training methodologies for Video-LMMs, encompassing three fundamental pillars: supervised fine-tuning (SFT) with chain-of-thought, reinforcement learning (RL) from verifiable objectives, and test-time scaling (TTS) through enhanced inference computation. We present a structured taxonomy that clarifies the roles, interconnections, and video-specific adaptations of these techniques, addressing unique challenges such as temporal localization, spatiotemporal grounding, long video efficiency, and multimodal evidence integration. Through systematic analysis of representative methods, we synthesize key design principles, insights, and evaluation protocols while identifying critical open challenges in reward design, scalability, and cost-performance optimization. We further curate essential benchmarks, datasets, and metrics to facilitate rigorous assessment of post-training effectiveness. This survey aims to provide researchers and practitioners with a unified framework for advancing Video-LMM capabilities. Additional resources and updates are maintained at: this https URL",
+    "analysis_result": {
+      "summary": "本文是一篇综述，首次全面审视了视频大型多模态模型（Video-LMMs）的后训练方法。文章将这些方法归纳为三大支柱：带思维链的监督微调（SFT）、基于可验证目标的强化学习（RL）以及测试时扩展（TTS）。通过系统性分析，论文综合了关键设计原则、识别了开放挑战，并整理了相关基准与数据集，旨在推动视频推理领域的发展。",
+      "key_points": [
+        "首次对Video-LMM的后训练方法进行了全面、系统的综述。",
+        "将后训练方法分为SFT、RL和TTS三大支柱，并构建了分类体系。",
+        "探讨了这些技术在解决时序定位、时空基准等视频特有挑战中的应用。",
+        "综合了代表性方法的设计原则、见解和评估方案。",
+        "指出了在奖励设计、可扩展性和成本效益优化方面的关键开放挑战。",
+        "整理并提供了视频理解领域的重要基准、数据集和评估指标。"
+      ],
+      "technical_details": "本文作为一篇综述，其技术核心在于对现有Video-LMM后训练方法的系统性梳理与分类。论文构建了一个包含三大支柱的分类法：1）带思维链的监督微调（SFT）：利用指令微调数据集，特别是结合思维链（Chain-of-Thought）来增强模型的复杂推理能力。2）基于可验证目标的强化学习（RL）：通过强化学习使模型输出与人类偏好或可验证事实对齐，超越基础的SFT。3）通过增强推理计算的测试时扩展（TTS）：在推理阶段应用特定技术来提升模型性能，无需再训练。该综述深入分析了这些技术如何针对视频特有的挑战进行调整，如时序定位、时空基准、长视频处理效率以及多模态证据整合，并阐明了它们之间的相互关系。",
+      "innovations": "本文的核心创新在于首次对Video-LMM的后训练方法进行了全面且系统的综述。其创建了一个由监督微调（SFT）、强化学习（RL）和测试时扩展（TTS）构成的三支柱分类法，为该碎片化的研究领域提供了清晰的结构化框架。此外，论文创新性地将这些通用方法与视频理解中的具体挑战（如时序定位、长视频效率）直接关联，综合了设计原则并指明了未来研究方向。",
+      "applications": "复杂时空关系推理、视频长时序依赖分析、事件时序定位、目标与动作的时空基准、长视频高效处理、多模态证据融合推理。",
+      "datasets": [],
+      "benchmarks": [],
+      "metrics": [],
+      "training_setup": {
+        "params": "",
+        "compute": "",
+        "data_scale": "",
+        "training_time": ""
+      },
+      "limitations": [
+        "当前用于视频模型的强化学习奖励设计仍是一个关键的开放性挑战。",
+        "后训练方法在面对更大模型和数据集时的可扩展性是一个核心问题。",
+        "如何优化复杂视频模型在计算成本与性能之间的平衡尚待解决。"
+      ],
+      "risks": [],
+      "comparison": "本文并非提出新模型，而是对后训练方法学进行比较。它对比了三大技术支柱：带思维链的SFT为模型提供了基础推理能力，但可能存在对齐不足的问题；基于RL的方法能更好地对齐人类偏好，但其奖励设计极具挑战性；TTS则是一种无需训练的推理时增强手段，但可能增加计算开销。该综述系统地阐述了这些方法的角色与相互联系，超越了以往文献中对这些技术的零散讨论，揭示了它们如何协同作用以提升模型性能。",
+      "difficulty_level": "中级",
+      "target_audience": "计算机视觉与多模态AI研究者",
+      "code_or_resources": {
+        "repo": "",
+        "license": ""
+      }
+    },
+    "video_script": {
+      "title": "Video-LMM Post-Training: A Deep Dive into Video Reasoning with Large Multimodal Models",
+      "tags": [],
+      "summary": "本文是一篇综述，首次全面审视了视频大型多模态模型（Video-LMMs）的后训练方法。文章将这些方法归纳为三大支柱：带思维链的监督微调（SFT）、基于可验证目标的强化学习（RL）以及测试时扩展（TTS）。通过系统性分析，论文综合了关键设计原则、识别了开放挑战，并整理了相关基准与数据集，旨在推动视频推理领域的发展。",
+      "key_points": [
+        "首次对Video-LMM的后训练方法进行了全面、系统的综述。",
+        "将后训练方法分为SFT、RL和TTS三大支柱，并构建了分类体系。",
+        "探讨了这些技术在解决时序定位、时空基准等视频特有挑战中的应用。",
+        "综合了代表性方法的设计原则、见解和评估方案。",
+        "指出了在奖励设计、可扩展性和成本效益优化方面的关键开放挑战。",
+        "整理并提供了视频理解领域的重要基准、数据集和评估指标。"
+      ],
+      "technical_details": "本文作为一篇综述，其技术核心在于对现有Video-LMM后训练方法的系统性梳理与分类。论文构建了一个包含三大支柱的分类法：1）带思维链的监督微调（SFT）：利用指令微调数据集，特别是结合思维链（Chain-of-Thought）来增强模型的复杂推理能力。2）基于可验证目标的强化学习（RL）：通过强化学习使模型输出与人类偏好或可验证事实对齐，超越基础的SFT。3）通过增强推理计算的测试时扩展（TTS）：在推理阶段应用特定技术来提升模型性能，无需再训练。该综述深入分析了这些技术如何针对视频特有的挑战进行调整，如时序定位、时空基准、长视频处理效率以及多模态证据整合，并阐明了它们之间的相互关系。",
+      "innovations": "本文的核心创新在于首次对Video-LMM的后训练方法进行了全面且系统的综述。其创建了一个由监督微调（SFT）、强化学习（RL）和测试时扩展（TTS）构成的三支柱分类法，为该碎片化的研究领域提供了清晰的结构化框架。此外，论文创新性地将这些通用方法与视频理解中的具体挑战（如时序定位、长视频效率）直接关联，综合了设计原则并指明了未来研究方向。",
+      "applications": "复杂时空关系推理、视频长时序依赖分析、事件时序定位、目标与动作的时空基准、长视频高效处理、多模态证据融合推理。",
+      "datasets": [],
+      "benchmarks": [],
+      "metrics": [],
+      "training_setup": {
+        "params": "",
+        "compute": "",
+        "data_scale": "",
+        "training_time": ""
+      },
+      "limitations": [
+        "当前用于视频模型的强化学习奖励设计仍是一个关键的开放性挑战。",
+        "后训练方法在面对更大模型和数据集时的可扩展性是一个核心问题。",
+        "如何优化复杂视频模型在计算成本与性能之间的平衡尚待解决。"
+      ],
+      "risks": [],
+      "comparison": "本文并非提出新模型，而是对后训练方法学进行比较。它对比了三大技术支柱：带思维链的SFT为模型提供了基础推理能力，但可能存在对齐不足的问题；基于RL的方法能更好地对齐人类偏好，但其奖励设计极具挑战性；TTS则是一种无需训练的推理时增强手段，但可能增加计算开销。该综述系统地阐述了这些方法的角色与相互联系，超越了以往文献中对这些技术的零散讨论，揭示了它们如何协同作用以提升模型性能。",
+      "difficulty_level": "中级",
+      "target_audience": "计算机视觉与多模态AI研究者",
+      "code_or_resources": {
+        "repo": "",
+        "license": ""
+      },
+      "full_script": "好的，我将严格依据您提供的论文信息，为您创作一篇专业的AI技术科普视频脚本。\n\n---\n\n### AI技术科普视频脚本\n\n**论文主题：** Video-LMM Post-Training: A Deep Dive into Video Reasoning with Large Multimodal Models\n\n---\n\n【开场白】（约200字）\n\n大家好，欢迎来到本期AI技术解析。今天，我们几乎每天都会与视频内容打交道，而让AI像人一样理解视频中的复杂动态，一直是人工智能领域追求的目标。近年来，视频大型多模态模型，也就是Video-LMMs，取得了巨大进展，它们能看懂视频，并用语言与我们交流。但是，如何让这些模型从“看懂”进化到“深度思考”，进行复杂的推理呢？今天我们要深入探讨的这篇综述论文，就为我们系统地描绘了通往更高阶视频智能的“高级进阶手册”。它首次全面梳理了Video-LMM的“后训练”方法，构建了一个清晰的三支柱框架，为整个领域的研究者们提供了一张宝贵的导航图。\n\n【背景介绍】（约450字）\n\n在深入主题之前，我们先来了解一下背景。大型多模态模型（LMMs），比如大家熟知的GPT-4V，已经能够同时理解图像和文本。当我们将这种能力扩展到视频领域，就得到了Video-LMMs。然而，视频远比静态图片复杂。它包含了时间维度、动态变化、因果关系和长时序依赖。比如，要让模型判断视频里“一个人为什么会摔倒”，它不仅要看到“地上的水渍”，还要理解“他正在快速奔跑”这个动态过程，并将两者关联起来，才能做出正确的因果推理。\n\n当前，大多数Video-LMM通过大规模的预训练，掌握了基础的视听语言对齐能力。但这仅仅是第一步。当面对需要精确定位事件发生时间、理解复杂时空关系、或是在长达数小时的视频中寻找关键信息时，这些基础模型往往会显得力不从心。这就引出了我们今天的主题——“后训练”（Post-Training）。后训练，顾名思义，就是在模型完成基础预训练之后，进行的一系列专门化、精细化的“特训”，旨在提升其高级推理和对齐能力。在此之前，相关的研究方法零散分布，缺乏一个统一的视角。这篇综 vực 论文的出现，恰好填补了这一空白，它系统性地整理和归纳了这些关键技术，为我们理解和推动视频推理的发展提供了坚实的基础。\n\n【技术原理详解】（约800字）\n\n这篇综述的核心创新，在于它将繁杂的后训练方法，清晰地归纳为三大支柱。我们可以把这看作是提升Video-LMM推理能力的三套组合拳。\n\n**第一大支柱，是“带思维链的监督微调”，英文缩写是SFT with Chain-of-Thought。**\n首先，监督微调（SFT）本身很好理解，就像是给模型找一位老师，用高质量的“问题-答案”对来进行针对性教学，让模型学会如何按照指令回答问题。但对于复杂的视频推理任务，仅仅给出最终答案是不够的。这里就引入了“思维链”（Chain-of-Thought, CoT）技术。这相当于老师在教学生解一道复杂的数学题时，不仅给出最终答案，更重要的是把一步步的解题过程展示出来。应用在视频模型上，当被问及“视频中的比赛谁会赢？”时，带思维链的数据会引导模型先分析“A队队员配合更默契”，再观察到“B队核心球员体力不支”，最后综合这些证据得出“A队胜算更大”的结论。通过学习这种分步推理的过程，模型能够更好地处理需要多步逻辑和整合多模态证据的复杂任务。\n\n**第二大支柱，是“基于可验证目标的强化学习”，英文缩写是RL。**\nSFT虽然有效，但它严重依赖于固定的数据集，有时模型的回答可能听起来合理，却与事实不符，或者不完全符合人类的偏好。强化学习（RL）则提供了一种更灵活的优化方式。我们可以把它比作训练宠物：当它做出正确的行为时，就给予奖励。对于Video-LMM，这个“奖励”可以来自于人类的反馈（比如人类评分员认为哪个回答更好），也可以来自于一个可验证的目标（比如模型定位的事件时间戳是否准确）。通过最大化奖励，模型会逐渐学会生成更符合人类偏好、或更忠于事实的回答。例如，在进行“事件时序定位”任务时，如果模型能准确地说出“事故发生在视频的第3分15秒”，它就会得到高分奖励，从而激励它不断提升定位的精确度。\n\n**第三大支柱，是“通过增强推理计算的测试时扩展”，英文缩写是TTS。**\n与前两者不同，TTS并非在训练阶段对模型进行修改，而是在用户提出问题、模型进行“推理”的那个瞬间，应用一些特殊技巧来增强其表现。这就像一个学生在考试时，被允许使用草稿纸和计算器来辅助思考。这些技术不需要重新训练模型，成本相对较低。例如，模型可以先生成多个不同的推理路径，然后内部进行评估和筛选，选出最可靠的一个作为最终答案。这种方法在不改变模型权重的情况下，通过增加推理时的计算量，来换取更高质量的输出，尤其适用于需要深度思考的复杂问题。\n\n这三大支柱相辅相成：SFT为模型打下坚实的推理基础，RL在此基础上进行对齐和优化，而TTS则作为一种灵活的“临场增强”手段，进一步提升模型在关键任务上的表现。\n\n【性能表现与应用】（约500字）\n\n由于本文是一篇综述，它并不提出一个新模型并刷新某个榜单的最高分，而是通过系统性地梳理，展示了这些后训练方法在各种应用场景中的巨大价值。\n\n在**复杂时空关系推理**方面，比如分析一场球赛的战术布局，SFT结合思维链的方法能够让模型像一个评论员一样，有条不紊地分析场上局势。\n\n在**事件时序定位**任务中，比如从一段长监控视频中找出“包裹是何时被取走的”，基于强化学习的方法通过设计精确的奖励函数，可以显著提升模型定位的准确性，将误差从分钟级降低到秒级。\n\n对于**长视频的高效处理**，传统的模型可能会因为视频过长而“遗忘”前面的内容。而后训练技术，特别是某些测试时扩展（TTS）方法，可以通过优化注意力机制或采用分段处理再整合的策略，让模型能够有效地分析长达数小时的视频，并进行精准的内容摘要或问答。\n\n此外，在**目标与动作的时空基准**（Spatio-temporal Grounding）任务上，这些方法也至关重要。比如，当用户指令是“找到那个穿着红色上衣、正在挥手的人”时，模型需要精确地在时间和空间上同时定位这个目标，后训练方法能够显著增强模型整合“红色上衣”、“挥手”等多模态线索并进行精确定位的能力。\n\n总而言之，这三大支柱共同推动了Video-LMM在各类视频理解基准和数据集上的性能提升，使其应用场景从简单的视频分类和打标签，扩展到真正需要深度认知和推理的复杂任务中。\n\n【意义影响与展望】（约500字）\n\n这篇论文的学术意义是里程碑式的。它首次为Video-LMM后训练这个略显碎片化的研究领域，提供了一个清晰、系统的结构化框架。这个“三支柱”分类法，不仅帮助研究者理解现有工作的内在联系，更为未来的研究指明了方向。它就像一张地图，标示出了不同的技术路径、各自的优缺点以及它们如何协同工作。\n\n然而，论文同样坦诚地指出了当前面临的开放挑战，这也是未来研究的重点方向。\n\n首先，**奖励设计**依然是强化学习在视频领域应用的一大难题。如何为复杂的、主观的视频理解任务（比如“这段视频的氛围如何？”）设计一个既准确又可扩展的奖励函数，是一个关键的开放性问题。\n\n其次，**可扩展性**。随着视频分辨率越来越高、时长越来越长，以及模型参数规模的持续增长，如何保证这些后训练方法的计算效率和可扩展性，是一个核心的工程与科研挑战。\n\n最后，是**成本与性能的平衡**。更复杂的后训练方法，尤其是强化学习和一些测试时扩展技术，往往意味着更高的计算成本。如何在有限的资源下，找到优化模型性能与控制训练、推理成本之间的最佳平衡点，将是决定这些技术能否大规模落地的关键。\n\n未来的研究可能会探索更高效的微调策略、自动化的奖励模型设计，以及能够自适应调整计算资源的智能推理框架，从而推动Video-LMM向着更强大、更高效、更经济的方向发展。\n\n【总结】（约200字）\n\n总的来说，这篇论文为我们深入理解Video-LMM的“高级进化之路”提供了一份全面的指南。它通过构建“带思维链的监督微调”、“基于强化学习的对齐”和“测试时扩展”这三大支柱的分类体系，系统地梳理了提升视频模型推理能力的核心方法学。这不仅是对过去工作的总结，更是对未来的启示。它告诉我们，要打造真正智能的视频理解系统，不能仅仅依赖于更大规模的预训练，精细化的“后训练”同样至关重要。对于所有关注计算机视觉和多模态AI的研究者来说，这篇综述无疑是理解领域前沿、启发未来研究的必读文献。",
+      "sections": [
+        {
+          "title": "【吸引开场】（20秒）",
+          "content": "视频AI的下一个突破口，不在于更大的模型，而在于更聪明的“后训练”方法。面对碎片化的研究现状，这篇开创性综述首次提出了SFT、RL、TTS三大支柱，为Video-LMM如何真正理解视频构建了第一个清晰框架。",
+          "raw_content": "视频AI的下一个突破口，不在于更大的模型，而在于更聪明的“后训练”方法。面对碎片化的研究现状，这篇开创性综述首次提出了SFT、RL、TTS三大支柱，为Video-LMM如何真正理解视频构建了第一个清晰框架。",
+          "is_hook": true,
+          "keywords": [],
+          "talking_points": [],
+          "background_prompt": "Modern tech style, subtle tension, eye-catching composition",
+          "image_prompt": "A wide-angle, cinematic shot of a massive holographic architectural blueprint representing an AI framework. At its foundation, three monumental, glowing pillars of light rise up, subtly labeled \"SFT\", \"RL\", and \"TTS\". These pillars support a complex, intricate neural network core that pulses with a calm, intelligent light. Streams of abstract video data, represented by flowing light particles and faint, translucent video frames, are being drawn into the core, being processed and understood. The overall aesthetic is clean, minimalist, and futuristic, suitable for a tech-education video. Dark background with a deep blue and black palette, contrasted by vibrant cyan, white, and magenta neon glows. Intricate details, high resolution, digital art, concept art."
+        },
+        {
+          "title": "【开场白】",
+          "content": "Hello everyone, and welcome. We interact with video content almost daily, and a long-standing goal in AI has been to enable machines to understand the complex dynamics within these videos, just like humans do. Recently, Video Large Multimodal Models, or Video-LMMs, have made significant strides in understanding video and communicating about it through language. But the next critical question is: how do we elevate these models from basic comprehension to deep, complex reasoning? The survey paper we'll explore today provides an 'advanced manual' for this very challenge. It's the first to comprehensively map out the 'post-training' methods for Video-LMMs, organizing them into a clear, three-pillar framework that serves as an invaluable roadmap for the entire research community.",
+          "raw_content": "（约200字）\n大家好，欢迎来到本期AI技术解析。今天，我们几乎每天都会与视频内容打交道，而让AI像人一样理解视频中的复杂动态，一直是人工智能领域追求的目标。近年来，视频大型多模态模型，也就是Video-LMMs，取得了巨大进展，它们能看懂视频，并用语言与我们交流。但是，如何让这些模型从“看懂”进化到“深度思考”，进行复杂的推理呢？今天我们要深入探讨的这篇综述论文，就为我们系统地描绘了通往更高阶视频智能的“高级进阶手册”。它首次全面梳理了Video-LMM的“后训练”方法，构建了一个清晰的三支柱框架，为整个领域的研究者们提供了一张宝贵的导航图。",
+          "keywords": [
+            "Video-LMMs",
+            "Complex Reasoning",
+            "Post-Training Methods",
+            "Survey",
+            "Three-Pillar Framework"
+          ],
+          "talking_points": [
+            "The challenge: Moving Video-LMMs from basic comprehension to complex reasoning.",
+            "Our guide: A comprehensive survey paper on advanced video intelligence.",
+            "Key contribution: The first systematic review of 'post-training' methods.",
+            "The structure: A clear three-pillar framework that serves as a research roadmap."
+          ],
+          "background_prompt": "A dark, futuristic, and professional background with subtle, abstract digital patterns or light grids.",
+          "image_prompt": "A visually striking, abstract illustration showing the evolution of AI intelligence. On the left, a simple, glowing digital brain icon labeled 'Comprehension'. On the right, a highly complex, interconnected neural network with intricate, glowing pathways, labeled 'Reasoning'. A luminous, futuristic bridge or roadmap connects the two, symbolizing the journey from basic understanding to advanced thought. The style is sleek, modern, and high-tech, with a dark background and neon blue and purple highlights."
+        },
+        {
+          "title": "【背景介绍】",
+          "content": "Before we dive into our main topic, let's set the stage with some background. Large Multimodal Models, or LMMs, like the well-known GPT-4V, can already understand both images and text. When we extend this capability to the video domain, we get Video-LMMs. However, video is far more complex than a static image. It incorporates the dimension of time, dynamic changes, causal relationships, and long-term dependencies. For example, for a model to determine why a person in a video fell, it must not only see the 'puddle of water on the ground' but also understand the dynamic process of 'him running quickly' and connect these two elements to make a correct causal inference. Currently, most Video-LMMs acquire basic audio-visual-language alignment through large-scale pre-training. But this is just the first step. When faced with tasks requiring precise event timing, understanding complex spatio-temporal relationships, or finding key information in hours-long videos, these foundational models often fall short. This brings us to our main topic today: Post-Training. Post-training, as the name suggests, is a series of specialized, fine-grained training sessions conducted after initial pre-training is complete. Its goal is to enhance the model's advanced reasoning and alignment capabilities. Prior to this, related research methods were scattered and lacked a unified perspective. The emergence of this survey paper fills that gap by systematically organizing and summarizing these key techniques, providing a solid foundation for understanding and advancing video reasoning.",
+          "raw_content": "（约450字）\n在深入主题之前，我们先来了解一下背景。大型多模态模型（LMMs），比如大家熟知的GPT-4V，已经能够同时理解图像和文本。当我们将这种能力扩展到视频领域，就得到了Video-LMMs。然而，视频远比静态图片复杂。它包含了时间维度、动态变化、因果关系和长时序依赖。比如，要让模型判断视频里“一个人为什么会摔倒”，它不仅要看到“地上的水渍”，还要理解“他正在快速奔跑”这个动态过程，并将两者关联起来，才能做出正确的因果推理。\n当前，大多数Video-LMM通过大规模的预训练，掌握了基础的视听语言对齐能力。但这仅仅是第一步。当面对需要精确定位事件发生时间、理解复杂时空关系、或是在长达数小时的视频中寻找关键信息时，这些基础模型往往会显得力不从心。这就引出了我们今天的主题——“后训练”（Post-Training）。后训练，顾名思义，就是在模型完成基础预训练之后，进行的一系列专门化、精细化的“特训”，旨在提升其高级推理和对齐能力。在此之前，相关的研究方法零散分布，缺乏一个统一的视角。这篇综 vực 论文的出现，恰好填补了这一空白，它系统性地整理和归纳了这些关键技术，为我们理解和推动视频推理的发展提供了坚实的基础。",
+          "keywords": [
+            "Video-LMMs",
+            "Post-Training",
+            "Video Reasoning",
+            "Multimodal AI",
+            "Spatio-Temporal Understanding"
+          ],
+          "talking_points": [
+            "From Images to Videos: LMMs are being extended to video, but video's complexity (time, dynamics, causality) presents significant new challenges.",
+            "The Limits of Pre-Training: Standard pre-training provides basic alignment but is insufficient for advanced tasks like precise temporal reasoning or understanding long videos.",
+            "The Role of Post-Training: A specialized training phase to enhance a model's advanced reasoning and alignment capabilities after initial pre-training.",
+            "A Unified Perspective: This survey systematically organizes scattered post-training techniques, providing a foundational framework for the field."
+          ],
+          "background_prompt": "A clean, minimalist, and professional background with a subtle, abstract tech-themed pattern or a soft gradient. The overall tone is academic and focused.",
+          "image_prompt": "A modern infographic slide for an AI research presentation. The slide shows a clear progression from left to right. On the left, a simple icon of a neural network labeled 'LMMs' successfully analyzes a static image. An arrow points to the center, where a more complex film strip shows a dynamic event (e.g., a person running towards a puddle). This section is labeled 'Video-LMMs' and has a subtle question mark icon indicating a challenge. Another arrow points to the right, where a more advanced, glowing neural network icon is labeled 'Post-Training'. From this advanced icon, clear analytical lines connect the cause and effect within the film strip, symbolizing successful causal reasoning. The style is clean, with a limited color palette of blues and grays, using vector graphics and clear typography."
+        },
+        {
+          "title": "【技术原理详解】",
+          "content": "（约800字） 这篇综述的核心创新，在于它将繁杂的后训练方法，清晰地归纳为三大支柱。我们可以把这看作是提升Video-LMM推理能力的三套组合拳。 **第一大支柱，是“带思维链的监督微调”，英文缩写是SFT with Chain-of-Thought。** 首先，监督微调（SFT）本身很好理解，就像是给模型找一位老师，用高质量的“问题-答案”对来进行针对性教学，让模型学会如何按照指令回答问题。但对于复杂的视频推理任务，仅仅给出最终答案是不够的。这里就引入了“思维链”（Chain-of-Thought, CoT）技术。这相当于老师在教学生解一道复杂的数学题时，不仅给出最终答案，更重要的是把一步步的解题过程展示出来。应用在视频模型上，当被问及“视频中的比赛谁会赢？”时，带思维链的数据会引导模型先分析“A队队员配合更默契”，再观察到“B队核心球员体力不支”，最后综合这些证据得出“A队胜算更大”的结论。通过学习这种分步推理的过程，模型能够更好地处理需要多步逻辑和整合多模态证据的复杂任务。 **第二大支柱，是“基于可验证目标的强化学习”，英文缩写是RL。** SFT虽然有效，但它严重依赖于固定的数据集，有时模型的回答可能听起来合理，却与事实不符，或者不完全符合人类的偏好。强化学习（RL）则提供了一种更灵活的优化方式。我们可以把它比作训练宠物：当它做出正确的行为时，就给予奖励。对于Video-LMM，这个“奖励”可以来自于人类的反馈（比如人类评分员认为哪个回答更好），也可以来自于一个可验证的目标（比如模型定位的事件时间戳是否准确）。通过最大化奖励，模型会逐渐学会生成更符合人类偏好、或更忠于事实的回答。例如，在进行“事件时序定位”任务时，如果模型能准确地说出“事故发生在视频的第3分15秒”，它就会得到高分奖励，从而激励它不断提升定位的精确度。 **第三大支柱，是“通过增强推理计算的测试时扩展”，英文缩写是TTS。** 与前两者不同，TTS并非在训练阶段对模型进行修改，而是在用户提出问题、模型进行“推理”的那个瞬间，应用一些特殊技巧来增强其表现。这就像一个学生在考试时，被允许使用草稿纸和计算器来辅助思考。这些技术不需要重新训练模型，成本相对较低。例如，模型可以先生成多个不同的推理路径，然后内部进行评估和筛选，选出最可靠的一个作为最终答案。这种方法在不改变模型权重的情况下，通过增加推理时的计算量，来换取更高质量的输出，尤其适用于需要深度思考的复杂问题。 这三大支柱相辅相成：SFT为模型打下坚实的推理基础，RL在此基础上进行对齐和优化，而TTS则作为一种灵活的“临场增强”手段，进一步提升模型在关键任务上的表现。",
+          "raw_content": "（约800字）\n这篇综述的核心创新，在于它将繁杂的后训练方法，清晰地归纳为三大支柱。我们可以把这看作是提升Video-LMM推理能力的三套组合拳。\n**第一大支柱，是“带思维链的监督微调”，英文缩写是SFT with Chain-of-Thought。**\n首先，监督微调（SFT）本身很好理解，就像是给模型找一位老师，用高质量的“问题-答案”对来进行针对性教学，让模型学会如何按照指令回答问题。但对于复杂的视频推理任务，仅仅给出最终答案是不够的。这里就引入了“思维链”（Chain-of-Thought, CoT）技术。这相当于老师在教学生解一道复杂的数学题时，不仅给出最终答案，更重要的是把一步步的解题过程展示出来。应用在视频模型上，当被问及“视频中的比赛谁会赢？”时，带思维链的数据会引导模型先分析“A队队员配合更默契”，再观察到“B队核心球员体力不支”，最后综合这些证据得出“A队胜算更大”的结论。通过学习这种分步推理的过程，模型能够更好地处理需要多步逻辑和整合多模态证据的复杂任务。\n**第二大支柱，是“基于可验证目标的强化学习”，英文缩写是RL。**\nSFT虽然有效，但它严重依赖于固定的数据集，有时模型的回答可能听起来合理，却与事实不符，或者不完全符合人类的偏好。强化学习（RL）则提供了一种更灵活的优化方式。我们可以把它比作训练宠物：当它做出正确的行为时，就给予奖励。对于Video-LMM，这个“奖励”可以来自于人类的反馈（比如人类评分员认为哪个回答更好），也可以来自于一个可验证的目标（比如模型定位的事件时间戳是否准确）。通过最大化奖励，模型会逐渐学会生成更符合人类偏好、或更忠于事实的回答。例如，在进行“事件时序定位”任务时，如果模型能准确地说出“事故发生在视频的第3分15秒”，它就会得到高分奖励，从而激励它不断提升定位的精确度。\n**第三大支柱，是“通过增强推理计算的测试时扩展”，英文缩写是TTS。**\n与前两者不同，TTS并非在训练阶段对模型进行修改，而是在用户提出问题、模型进行“推理”的那个瞬间，应用一些特殊技巧来增强其表现。这就像一个学生在考试时，被允许使用草稿纸和计算器来辅助思考。这些技术不需要重新训练模型，成本相对较低。例如，模型可以先生成多个不同的推理路径，然后内部进行评估和筛选，选出最可靠的一个作为最终答案。这种方法在不改变模型权重的情况下，通过增加推理时的计算量，来换取更高质量的输出，尤其适用于需要深度思考的复杂问题。\n这三大支柱相辅相成：SFT为模型打下坚实的推理基础，RL在此基础上进行对齐和优化，而TTS则作为一种灵活的“临场增强”手段，进一步提升模型在关键任务上的表现。",
+          "keywords": [],
+          "talking_points": [],
+          "background_prompt": "Modern AI themed classroom slide",
+          "image_prompt": "A sleek, futuristic digital art illustration depicting the three pillars of advanced AI reasoning. Three towering, translucent holographic pillars stand in a minimalist, dark tech environment. The central pillar, representing \"SFT with Chain-of-Thought,\" is the most prominent, emitting a luminous data stream that visualizes a step-by-step logical process as a glowing flowchart with connected nodes. This flowchart analyzes a holographic projection of a basketball game, with nodes showing abstract icons for \"team coordination\" and \"player stamina\" leading to a final \"win probability\" outcome. Analytical lines and data points are overlaid on the holographic players. The other two pillars are slightly dimmer, displaying complex but abstract data patterns. The color palette is dominated by deep blues, cyans, and purples, with sharp, glowing white highlights. The atmosphere is clean, sophisticated, and educational, perfect for a tech presentation. Cinematic lighting, sharp focus, ultra-detailed."
+        },
+        {
+          "title": "【性能表现与应用】",
+          "content": "Since this paper is a survey, our contribution isn't a new model that sets a state-of-the-art record. Instead, through a systematic review, we demonstrate the immense value of post-training methods across a wide range of applications. For complex spatio-temporal reasoning, like analyzing tactical plays in a sports match, combining SFT with chain-of-thought allows the model to act like a commentator, methodically breaking down the game situation. In temporal event localization, such as finding the exact moment a package was taken from a long surveillance video, reinforcement learning with precisely designed reward functions can dramatically improve accuracy, reducing errors from the minute-level down to the second. For efficient long video processing, where traditional models might 'forget' earlier content, post-training techniques like Test-Time Scaling can optimize attention mechanisms or use a segment-and-integrate strategy. This enables models to effectively analyze videos several hours long for precise summarization or Q&A. Finally, these methods are vital for spatio-temporal grounding. When a user asks to 'find the person in the red shirt who is waving,' the model must precisely locate the target in both time and space. Post-training significantly enhances the model's ability to integrate these multi-modal cues for accurate grounding. In summary, these post-training pillars are collectively advancing Video-LMM performance, expanding their use from simple classification to complex tasks that require deep cognitive reasoning.",
+          "raw_content": "（约500字）\n由于本文是一篇综述，它并不提出一个新模型并刷新某个榜单的最高分，而是通过系统性地梳理，展示了这些后训练方法在各种应用场景中的巨大价值。\n在**复杂时空关系推理**方面，比如分析一场球赛的战术布局，SFT结合思维链的方法能够让模型像一个评论员一样，有条不紊地分析场上局势。\n在**事件时序定位**任务中，比如从一段长监控视频中找出“包裹是何时被取走的”，基于强化学习的方法通过设计精确的奖励函数，可以显著提升模型定位的准确性，将误差从分钟级降低到秒级。\n对于**长视频的高效处理**，传统的模型可能会因为视频过长而“遗忘”前面的内容。而后训练技术，特别是某些测试时扩展（TTS）方法，可以通过优化注意力机制或采用分段处理再整合的策略，让模型能够有效地分析长达数小时的视频，并进行精准的内容摘要或问答。\n此外，在**目标与动作的时空基准**（Spatio-temporal Grounding）任务上，这些方法也至关重要。比如，当用户指令是“找到那个穿着红色上衣、正在挥手的人”时，模型需要精确地在时间和空间上同时定位这个目标，后训练方法能够显著增强模型整合“红色上衣”、“挥手”等多模态线索并进行精确定位的能力。\n总而言之，这三大支柱共同推动了Video-LMM在各类视频理解基准和数据集上的性能提升，使其应用场景从简单的视频分类和打标签，扩展到真正需要深度认知和推理的复杂任务中。",
+          "keywords": [
+            "Video-LMMs",
+            "Post-Training Methods",
+            "Spatio-temporal Reasoning",
+            "Long Video Understanding",
+            "Event Localization"
+          ],
+          "talking_points": [
+            "Post-training methods unlock advanced capabilities beyond standard pre-training.",
+            "Enables complex spatio-temporal reasoning, like analyzing sports tactics.",
+            "Improves precision in tasks like temporal event localization in long videos.",
+            "Overcomes memory limitations for processing and summarizing hour-long content.",
+            "Enhances spatio-temporal grounding by integrating multi-modal user commands."
+          ],
+          "background_prompt": "Minimalist, dark tech background with a subtle, glowing grid pattern suggesting a digital space.",
+          "image_prompt": "A central, glowing neural network icon. From this center, four distinct quadrants emerge, each showcasing a different AI application on video. Quadrant 1: A stylized diagram of a soccer field with glowing lines showing player movement and tactical formations. Quadrant 2: A security camera video timeline with a magnifying glass pinpointing a specific frame of a person picking up a box. Quadrant 3: A long, scrolling film strip being processed and condensed into a concise text summary document. Quadrant 4: A video frame of a crowd with a precise, highlighted bounding box around a person wearing a red shirt and waving, with text labels 'red shirt' and 'waving' pointing to them. The overall aesthetic is a clean, futuristic infographic with a dark background and vibrant, glowing data visualizations."
+        },
+        {
+          "title": "【意义影响与展望】",
+          "content": "This paper represents a landmark contribution to the field. For the first time, it provides a clear and systematic framework for the somewhat fragmented research area of Video-LMM post-training. Our 'three-pillar' classification not only helps researchers understand the connections between existing works but also charts a course for future research. Think of it as a map, detailing different technical paths, their respective strengths and weaknesses, and how they can work in synergy. However, the paper also candidly addresses the open challenges that lie ahead, which we believe are critical directions for future work. First is reward design. Creating accurate and scalable reward functions for complex, subjective video tasks—like assessing a video's mood—remains a key open problem for reinforcement learning. Second is scalability. As videos become longer and higher-resolution, and models grow larger, ensuring the computational efficiency of these post-training methods is a core engineering challenge. Finally, there's the cost-performance trade-off. More sophisticated methods often come with higher computational costs. Finding the optimal balance between model performance and the costs of training and inference will be crucial for large-scale adoption. Future research will likely explore more efficient fine-tuning strategies, automated reward model design, and intelligent inference frameworks, all aimed at making Video-LMMs more powerful, efficient, and economical.",
+          "raw_content": "（约500字）\n这篇论文的学术意义是里程碑式的。它首次为Video-LMM后训练这个略显碎片化的研究领域，提供了一个清晰、系统的结构化框架。这个“三支柱”分类法，不仅帮助研究者理解现有工作的内在联系，更为未来的研究指明了方向。它就像一张地图，标示出了不同的技术路径、各自的优缺点以及它们如何协同工作。\n然而，论文同样坦诚地指出了当前面临的开放挑战，这也是未来研究的重点方向。\n首先，**奖励设计**依然是强化学习在视频领域应用的一大难题。如何为复杂的、主观的视频理解任务（比如“这段视频的氛围如何？”）设计一个既准确又可扩展的奖励函数，是一个关键的开放性问题。\n其次，**可扩展性**。随着视频分辨率越来越高、时长越来越长，以及模型参数规模的持续增长，如何保证这些后训练方法的计算效率和可扩展性，是一个核心的工程与科研挑战。\n最后，是**成本与性能的平衡**。更复杂的后训练方法，尤其是强化学习和一些测试时扩展技术，往往意味着更高的计算成本。如何在有限的资源下，找到优化模型性能与控制训练、推理成本之间的最佳平衡点，将是决定这些技术能否大规模落地的关键。\n未来的研究可能会探索更高效的微调策略、自动化的奖励模型设计，以及能够自适应调整计算资源的智能推理框架，从而推动Video-LMM向着更强大、更高效、更经济的方向发展。",
+          "keywords": [
+            "Structured Framework",
+            "Open Challenges",
+            "Reward Design",
+            "Scalability",
+            "Future Directions"
+          ],
+          "talking_points": [
+            "Contribution: Introduced the first systematic 'three-pillar' framework for Video-LMM post-training, providing a map for the field.",
+            "Challenge 1: Reward Design - Crafting effective reward functions for complex and subjective video tasks remains a major hurdle.",
+            "Challenge 2: Scalability & Cost - Balancing performance with computational cost is crucial as models and data scale.",
+            "Future Outlook: Research will focus on efficient fine-tuning, automated rewards, and adaptive inference to build more powerful and economical models."
+          ],
+          "background_prompt": "A dark, futuristic, and clean background with subtle grid lines or data streams, creating a high-tech and professional atmosphere.",
+          "image_prompt": "A futuristic, holographic blueprint of a grand structure supported by three glowing pillars. From these pillars, a luminous roadmap extends into the distance, branching into paths labeled 'Reward Design', 'Scalability', and 'Cost-Performance'. The overall aesthetic is clean, technical, and forward-looking, with a dark background and neon blue and white light, in the style of a minimalist infographic."
+        },
+        {
+          "title": "【总结】",
+          "content": "In conclusion, this paper offers a comprehensive guide to the advanced evolution of Video-LMMs. It systematically organizes the core methodologies for enhancing video reasoning capabilities through a taxonomy built on three pillars: Supervised Fine-Tuning with Chain-of-Thought, Reinforcement Learning-based Alignment, and Test-Time Extension. This work is more than a summary of the past; it's a beacon for the future. It highlights that creating truly intelligent video understanding systems depends not only on massive pre-training but also, critically, on sophisticated post-training. For all researchers in computer vision and multimodal AI, this survey is essential reading for grasping the field's frontier and sparking future innovation.",
+          "raw_content": "（约200字）\n总的来说，这篇论文为我们深入理解Video-LMM的“高级进化之路”提供了一份全面的指南。它通过构建“带思维链的监督微调”、“基于强化学习的对齐”和“测试时扩展”这三大支柱的分类体系，系统地梳理了提升视频模型推理能力的核心方法学。这不仅是对过去工作的总结，更是对未来的启示。它告诉我们，要打造真正智能的视频理解系统，不能仅仅依赖于更大规模的预训练，精细化的“后训练”同样至关重要。对于所有关注计算机视觉和多模态AI的研究者来说，这篇综述无疑是理解领域前沿、启发未来研究的必读文献。",
+          "keywords": [
+            "Video-LMM Evolution",
+            "Reasoning Enhancement",
+            "Three Pillars Taxonomy",
+            "Post-Training",
+            "Future Directions",
+            "Multimodal AI"
+          ],
+          "talking_points": [
+            "Provides a comprehensive guide to the advanced evolution of Video-LMMs.",
+            "Establishes a core taxonomy for reasoning enhancement built on three pillars: SFT with CoT, RL-based Alignment, and Test-Time Extension.",
+            "Emphasizes the critical importance of sophisticated post-training, not just large-scale pre-training.",
+            "Serves as an essential resource for understanding the state-of-the-art and inspiring future research."
+          ],
+          "background_prompt": "Dark, futuristic, high-tech background with subtle glowing grid lines.",
+          "image_prompt": "A minimalist, abstract visualization of an evolutionary path. The path is built upon three distinct, glowing pillars labeled 'SFT with CoT', 'RL-based Alignment', and 'Test-Time Extension'. The path ascends towards a bright, abstract representation of a highly intelligent AI or a futuristic brain. The style is clean, high-tech, with a dark background and neon blue and purple highlights, conveying a sense of progress and future possibilities. The overall composition should be balanced and clear, suitable for a presentation slide."
+        }
+      ]
+    },
+    "image_prompts": []
+  },
+  "analysis": {
+    "summary": "本文是一篇综述，首次全面审视了视频大型多模态模型（Video-LMMs）的后训练方法。文章将这些方法归纳为三大支柱：带思维链的监督微调（SFT）、基于可验证目标的强化学习（RL）以及测试时扩展（TTS）。通过系统性分析，论文综合了关键设计原则、识别了开放挑战，并整理了相关基准与数据集，旨在推动视频推理领域的发展。",
+    "key_points": [
+      "首次对Video-LMM的后训练方法进行了全面、系统的综述。",
+      "将后训练方法分为SFT、RL和TTS三大支柱，并构建了分类体系。",
+      "探讨了这些技术在解决时序定位、时空基准等视频特有挑战中的应用。",
+      "综合了代表性方法的设计原则、见解和评估方案。",
+      "指出了在奖励设计、可扩展性和成本效益优化方面的关键开放挑战。",
+      "整理并提供了视频理解领域的重要基准、数据集和评估指标。"
+    ],
+    "technical_details": "本文作为一篇综述，其技术核心在于对现有Video-LMM后训练方法的系统性梳理与分类。论文构建了一个包含三大支柱的分类法：1）带思维链的监督微调（SFT）：利用指令微调数据集，特别是结合思维链（Chain-of-Thought）来增强模型的复杂推理能力。2）基于可验证目标的强化学习（RL）：通过强化学习使模型输出与人类偏好或可验证事实对齐，超越基础的SFT。3）通过增强推理计算的测试时扩展（TTS）：在推理阶段应用特定技术来提升模型性能，无需再训练。该综述深入分析了这些技术如何针对视频特有的挑战进行调整，如时序定位、时空基准、长视频处理效率以及多模态证据整合，并阐明了它们之间的相互关系。",
+    "innovations": "本文的核心创新在于首次对Video-LMM的后训练方法进行了全面且系统的综述。其创建了一个由监督微调（SFT）、强化学习（RL）和测试时扩展（TTS）构成的三支柱分类法，为该碎片化的研究领域提供了清晰的结构化框架。此外，论文创新性地将这些通用方法与视频理解中的具体挑战（如时序定位、长视频效率）直接关联，综合了设计原则并指明了未来研究方向。",
+    "applications": "复杂时空关系推理、视频长时序依赖分析、事件时序定位、目标与动作的时空基准、长视频高效处理、多模态证据融合推理。",
+    "datasets": [],
+    "benchmarks": [],
+    "metrics": [],
+    "training_setup": {
+      "params": "",
+      "compute": "",
+      "data_scale": "",
+      "training_time": ""
+    },
+    "limitations": [
+      "当前用于视频模型的强化学习奖励设计仍是一个关键的开放性挑战。",
+      "后训练方法在面对更大模型和数据集时的可扩展性是一个核心问题。",
+      "如何优化复杂视频模型在计算成本与性能之间的平衡尚待解决。"
+    ],
+    "risks": [],
+    "comparison": "本文并非提出新模型，而是对后训练方法学进行比较。它对比了三大技术支柱：带思维链的SFT为模型提供了基础推理能力，但可能存在对齐不足的问题；基于RL的方法能更好地对齐人类偏好，但其奖励设计极具挑战性；TTS则是一种无需训练的推理时增强手段，但可能增加计算开销。该综述系统地阐述了这些方法的角色与相互联系，超越了以往文献中对这些技术的零散讨论，揭示了它们如何协同作用以提升模型性能。",
+    "difficulty_level": "中级",
+    "target_audience": "计算机视觉与多模态AI研究者",
+    "code_or_resources": {
+      "repo": "",
+      "license": ""
+    }
+  },
+  "script": {
+    "title": "Video-LMM Post-Training: A Deep Dive into Video Reasoning with Large Multimodal Models",
+    "tags": [],
+    "summary": "本文是一篇综述，首次全面审视了视频大型多模态模型（Video-LMMs）的后训练方法。文章将这些方法归纳为三大支柱：带思维链的监督微调（SFT）、基于可验证目标的强化学习（RL）以及测试时扩展（TTS）。通过系统性分析，论文综合了关键设计原则、识别了开放挑战，并整理了相关基准与数据集，旨在推动视频推理领域的发展。",
+    "key_points": [
+      "首次对Video-LMM的后训练方法进行了全面、系统的综述。",
+      "将后训练方法分为SFT、RL和TTS三大支柱，并构建了分类体系。",
+      "探讨了这些技术在解决时序定位、时空基准等视频特有挑战中的应用。",
+      "综合了代表性方法的设计原则、见解和评估方案。",
+      "指出了在奖励设计、可扩展性和成本效益优化方面的关键开放挑战。",
+      "整理并提供了视频理解领域的重要基准、数据集和评估指标。"
+    ],
+    "technical_details": "本文作为一篇综述，其技术核心在于对现有Video-LMM后训练方法的系统性梳理与分类。论文构建了一个包含三大支柱的分类法：1）带思维链的监督微调（SFT）：利用指令微调数据集，特别是结合思维链（Chain-of-Thought）来增强模型的复杂推理能力。2）基于可验证目标的强化学习（RL）：通过强化学习使模型输出与人类偏好或可验证事实对齐，超越基础的SFT。3）通过增强推理计算的测试时扩展（TTS）：在推理阶段应用特定技术来提升模型性能，无需再训练。该综述深入分析了这些技术如何针对视频特有的挑战进行调整，如时序定位、时空基准、长视频处理效率以及多模态证据整合，并阐明了它们之间的相互关系。",
+    "innovations": "本文的核心创新在于首次对Video-LMM的后训练方法进行了全面且系统的综述。其创建了一个由监督微调（SFT）、强化学习（RL）和测试时扩展（TTS）构成的三支柱分类法，为该碎片化的研究领域提供了清晰的结构化框架。此外，论文创新性地将这些通用方法与视频理解中的具体挑战（如时序定位、长视频效率）直接关联，综合了设计原则并指明了未来研究方向。",
+    "applications": "复杂时空关系推理、视频长时序依赖分析、事件时序定位、目标与动作的时空基准、长视频高效处理、多模态证据融合推理。",
+    "datasets": [],
+    "benchmarks": [],
+    "metrics": [],
+    "training_setup": {
+      "params": "",
+      "compute": "",
+      "data_scale": "",
+      "training_time": ""
+    },
+    "limitations": [
+      "当前用于视频模型的强化学习奖励设计仍是一个关键的开放性挑战。",
+      "后训练方法在面对更大模型和数据集时的可扩展性是一个核心问题。",
+      "如何优化复杂视频模型在计算成本与性能之间的平衡尚待解决。"
+    ],
+    "risks": [],
+    "comparison": "本文并非提出新模型，而是对后训练方法学进行比较。它对比了三大技术支柱：带思维链的SFT为模型提供了基础推理能力，但可能存在对齐不足的问题；基于RL的方法能更好地对齐人类偏好，但其奖励设计极具挑战性；TTS则是一种无需训练的推理时增强手段，但可能增加计算开销。该综述系统地阐述了这些方法的角色与相互联系，超越了以往文献中对这些技术的零散讨论，揭示了它们如何协同作用以提升模型性能。",
+    "difficulty_level": "中级",
+    "target_audience": "计算机视觉与多模态AI研究者",
+    "code_or_resources": {
+      "repo": "",
+      "license": ""
+    },
+    "full_script": "好的，我将严格依据您提供的论文信息，为您创作一篇专业的AI技术科普视频脚本。\n\n---\n\n### AI技术科普视频脚本\n\n**论文主题：** Video-LMM Post-Training: A Deep Dive into Video Reasoning with Large Multimodal Models\n\n---\n\n【开场白】（约200字）\n\n大家好，欢迎来到本期AI技术解析。今天，我们几乎每天都会与视频内容打交道，而让AI像人一样理解视频中的复杂动态，一直是人工智能领域追求的目标。近年来，视频大型多模态模型，也就是Video-LMMs，取得了巨大进展，它们能看懂视频，并用语言与我们交流。但是，如何让这些模型从“看懂”进化到“深度思考”，进行复杂的推理呢？今天我们要深入探讨的这篇综述论文，就为我们系统地描绘了通往更高阶视频智能的“高级进阶手册”。它首次全面梳理了Video-LMM的“后训练”方法，构建了一个清晰的三支柱框架，为整个领域的研究者们提供了一张宝贵的导航图。\n\n【背景介绍】（约450字）\n\n在深入主题之前，我们先来了解一下背景。大型多模态模型（LMMs），比如大家熟知的GPT-4V，已经能够同时理解图像和文本。当我们将这种能力扩展到视频领域，就得到了Video-LMMs。然而，视频远比静态图片复杂。它包含了时间维度、动态变化、因果关系和长时序依赖。比如，要让模型判断视频里“一个人为什么会摔倒”，它不仅要看到“地上的水渍”，还要理解“他正在快速奔跑”这个动态过程，并将两者关联起来，才能做出正确的因果推理。\n\n当前，大多数Video-LMM通过大规模的预训练，掌握了基础的视听语言对齐能力。但这仅仅是第一步。当面对需要精确定位事件发生时间、理解复杂时空关系、或是在长达数小时的视频中寻找关键信息时，这些基础模型往往会显得力不从心。这就引出了我们今天的主题——“后训练”（Post-Training）。后训练，顾名思义，就是在模型完成基础预训练之后，进行的一系列专门化、精细化的“特训”，旨在提升其高级推理和对齐能力。在此之前，相关的研究方法零散分布，缺乏一个统一的视角。这篇综 vực 论文的出现，恰好填补了这一空白，它系统性地整理和归纳了这些关键技术，为我们理解和推动视频推理的发展提供了坚实的基础。\n\n【技术原理详解】（约800字）\n\n这篇综述的核心创新，在于它将繁杂的后训练方法，清晰地归纳为三大支柱。我们可以把这看作是提升Video-LMM推理能力的三套组合拳。\n\n**第一大支柱，是“带思维链的监督微调”，英文缩写是SFT with Chain-of-Thought。**\n首先，监督微调（SFT）本身很好理解，就像是给模型找一位老师，用高质量的“问题-答案”对来进行针对性教学，让模型学会如何按照指令回答问题。但对于复杂的视频推理任务，仅仅给出最终答案是不够的。这里就引入了“思维链”（Chain-of-Thought, CoT）技术。这相当于老师在教学生解一道复杂的数学题时，不仅给出最终答案，更重要的是把一步步的解题过程展示出来。应用在视频模型上，当被问及“视频中的比赛谁会赢？”时，带思维链的数据会引导模型先分析“A队队员配合更默契”，再观察到“B队核心球员体力不支”，最后综合这些证据得出“A队胜算更大”的结论。通过学习这种分步推理的过程，模型能够更好地处理需要多步逻辑和整合多模态证据的复杂任务。\n\n**第二大支柱，是“基于可验证目标的强化学习”，英文缩写是RL。**\nSFT虽然有效，但它严重依赖于固定的数据集，有时模型的回答可能听起来合理，却与事实不符，或者不完全符合人类的偏好。强化学习（RL）则提供了一种更灵活的优化方式。我们可以把它比作训练宠物：当它做出正确的行为时，就给予奖励。对于Video-LMM，这个“奖励”可以来自于人类的反馈（比如人类评分员认为哪个回答更好），也可以来自于一个可验证的目标（比如模型定位的事件时间戳是否准确）。通过最大化奖励，模型会逐渐学会生成更符合人类偏好、或更忠于事实的回答。例如，在进行“事件时序定位”任务时，如果模型能准确地说出“事故发生在视频的第3分15秒”，它就会得到高分奖励，从而激励它不断提升定位的精确度。\n\n**第三大支柱，是“通过增强推理计算的测试时扩展”，英文缩写是TTS。**\n与前两者不同，TTS并非在训练阶段对模型进行修改，而是在用户提出问题、模型进行“推理”的那个瞬间，应用一些特殊技巧来增强其表现。这就像一个学生在考试时，被允许使用草稿纸和计算器来辅助思考。这些技术不需要重新训练模型，成本相对较低。例如，模型可以先生成多个不同的推理路径，然后内部进行评估和筛选，选出最可靠的一个作为最终答案。这种方法在不改变模型权重的情况下，通过增加推理时的计算量，来换取更高质量的输出，尤其适用于需要深度思考的复杂问题。\n\n这三大支柱相辅相成：SFT为模型打下坚实的推理基础，RL在此基础上进行对齐和优化，而TTS则作为一种灵活的“临场增强”手段，进一步提升模型在关键任务上的表现。\n\n【性能表现与应用】（约500字）\n\n由于本文是一篇综述，它并不提出一个新模型并刷新某个榜单的最高分，而是通过系统性地梳理，展示了这些后训练方法在各种应用场景中的巨大价值。\n\n在**复杂时空关系推理**方面，比如分析一场球赛的战术布局，SFT结合思维链的方法能够让模型像一个评论员一样，有条不紊地分析场上局势。\n\n在**事件时序定位**任务中，比如从一段长监控视频中找出“包裹是何时被取走的”，基于强化学习的方法通过设计精确的奖励函数，可以显著提升模型定位的准确性，将误差从分钟级降低到秒级。\n\n对于**长视频的高效处理**，传统的模型可能会因为视频过长而“遗忘”前面的内容。而后训练技术，特别是某些测试时扩展（TTS）方法，可以通过优化注意力机制或采用分段处理再整合的策略，让模型能够有效地分析长达数小时的视频，并进行精准的内容摘要或问答。\n\n此外，在**目标与动作的时空基准**（Spatio-temporal Grounding）任务上，这些方法也至关重要。比如，当用户指令是“找到那个穿着红色上衣、正在挥手的人”时，模型需要精确地在时间和空间上同时定位这个目标，后训练方法能够显著增强模型整合“红色上衣”、“挥手”等多模态线索并进行精确定位的能力。\n\n总而言之，这三大支柱共同推动了Video-LMM在各类视频理解基准和数据集上的性能提升，使其应用场景从简单的视频分类和打标签，扩展到真正需要深度认知和推理的复杂任务中。\n\n【意义影响与展望】（约500字）\n\n这篇论文的学术意义是里程碑式的。它首次为Video-LMM后训练这个略显碎片化的研究领域，提供了一个清晰、系统的结构化框架。这个“三支柱”分类法，不仅帮助研究者理解现有工作的内在联系，更为未来的研究指明了方向。它就像一张地图，标示出了不同的技术路径、各自的优缺点以及它们如何协同工作。\n\n然而，论文同样坦诚地指出了当前面临的开放挑战，这也是未来研究的重点方向。\n\n首先，**奖励设计**依然是强化学习在视频领域应用的一大难题。如何为复杂的、主观的视频理解任务（比如“这段视频的氛围如何？”）设计一个既准确又可扩展的奖励函数，是一个关键的开放性问题。\n\n其次，**可扩展性**。随着视频分辨率越来越高、时长越来越长，以及模型参数规模的持续增长，如何保证这些后训练方法的计算效率和可扩展性，是一个核心的工程与科研挑战。\n\n最后，是**成本与性能的平衡**。更复杂的后训练方法，尤其是强化学习和一些测试时扩展技术，往往意味着更高的计算成本。如何在有限的资源下，找到优化模型性能与控制训练、推理成本之间的最佳平衡点，将是决定这些技术能否大规模落地的关键。\n\n未来的研究可能会探索更高效的微调策略、自动化的奖励模型设计，以及能够自适应调整计算资源的智能推理框架，从而推动Video-LMM向着更强大、更高效、更经济的方向发展。\n\n【总结】（约200字）\n\n总的来说，这篇论文为我们深入理解Video-LMM的“高级进化之路”提供了一份全面的指南。它通过构建“带思维链的监督微调”、“基于强化学习的对齐”和“测试时扩展”这三大支柱的分类体系，系统地梳理了提升视频模型推理能力的核心方法学。这不仅是对过去工作的总结，更是对未来的启示。它告诉我们，要打造真正智能的视频理解系统，不能仅仅依赖于更大规模的预训练，精细化的“后训练”同样至关重要。对于所有关注计算机视觉和多模态AI的研究者来说，这篇综述无疑是理解领域前沿、启发未来研究的必读文献。",
+    "sections": [
+      {
+        "title": "【吸引开场】（20秒）",
+        "content": "视频AI的下一个突破口，不在于更大的模型，而在于更聪明的“后训练”方法。面对碎片化的研究现状，这篇开创性综述首次提出了SFT、RL、TTS三大支柱，为Video-LMM如何真正理解视频构建了第一个清晰框架。",
+        "raw_content": "视频AI的下一个突破口，不在于更大的模型，而在于更聪明的“后训练”方法。面对碎片化的研究现状，这篇开创性综述首次提出了SFT、RL、TTS三大支柱，为Video-LMM如何真正理解视频构建了第一个清晰框架。",
+        "is_hook": true,
+        "keywords": [],
+        "talking_points": [],
+        "background_prompt": "Modern tech style, subtle tension, eye-catching composition",
+        "image_prompt": "A wide-angle, cinematic shot of a massive holographic architectural blueprint representing an AI framework. At its foundation, three monumental, glowing pillars of light rise up, subtly labeled \"SFT\", \"RL\", and \"TTS\". These pillars support a complex, intricate neural network core that pulses with a calm, intelligent light. Streams of abstract video data, represented by flowing light particles and faint, translucent video frames, are being drawn into the core, being processed and understood. The overall aesthetic is clean, minimalist, and futuristic, suitable for a tech-education video. Dark background with a deep blue and black palette, contrasted by vibrant cyan, white, and magenta neon glows. Intricate details, high resolution, digital art, concept art."
+      },
+      {
+        "title": "【开场白】",
+        "content": "Hello everyone, and welcome. We interact with video content almost daily, and a long-standing goal in AI has been to enable machines to understand the complex dynamics within these videos, just like humans do. Recently, Video Large Multimodal Models, or Video-LMMs, have made significant strides in understanding video and communicating about it through language. But the next critical question is: how do we elevate these models from basic comprehension to deep, complex reasoning? The survey paper we'll explore today provides an 'advanced manual' for this very challenge. It's the first to comprehensively map out the 'post-training' methods for Video-LMMs, organizing them into a clear, three-pillar framework that serves as an invaluable roadmap for the entire research community.",
+        "raw_content": "（约200字）\n大家好，欢迎来到本期AI技术解析。今天，我们几乎每天都会与视频内容打交道，而让AI像人一样理解视频中的复杂动态，一直是人工智能领域追求的目标。近年来，视频大型多模态模型，也就是Video-LMMs，取得了巨大进展，它们能看懂视频，并用语言与我们交流。但是，如何让这些模型从“看懂”进化到“深度思考”，进行复杂的推理呢？今天我们要深入探讨的这篇综述论文，就为我们系统地描绘了通往更高阶视频智能的“高级进阶手册”。它首次全面梳理了Video-LMM的“后训练”方法，构建了一个清晰的三支柱框架，为整个领域的研究者们提供了一张宝贵的导航图。",
+        "keywords": [
+          "Video-LMMs",
+          "Complex Reasoning",
+          "Post-Training Methods",
+          "Survey",
+          "Three-Pillar Framework"
+        ],
+        "talking_points": [
+          "The challenge: Moving Video-LMMs from basic comprehension to complex reasoning.",
+          "Our guide: A comprehensive survey paper on advanced video intelligence.",
+          "Key contribution: The first systematic review of 'post-training' methods.",
+          "The structure: A clear three-pillar framework that serves as a research roadmap."
+        ],
+        "background_prompt": "A dark, futuristic, and professional background with subtle, abstract digital patterns or light grids.",
+        "image_prompt": "A visually striking, abstract illustration showing the evolution of AI intelligence. On the left, a simple, glowing digital brain icon labeled 'Comprehension'. On the right, a highly complex, interconnected neural network with intricate, glowing pathways, labeled 'Reasoning'. A luminous, futuristic bridge or roadmap connects the two, symbolizing the journey from basic understanding to advanced thought. The style is sleek, modern, and high-tech, with a dark background and neon blue and purple highlights."
+      },
+      {
+        "title": "【背景介绍】",
+        "content": "Before we dive into our main topic, let's set the stage with some background. Large Multimodal Models, or LMMs, like the well-known GPT-4V, can already understand both images and text. When we extend this capability to the video domain, we get Video-LMMs. However, video is far more complex than a static image. It incorporates the dimension of time, dynamic changes, causal relationships, and long-term dependencies. For example, for a model to determine why a person in a video fell, it must not only see the 'puddle of water on the ground' but also understand the dynamic process of 'him running quickly' and connect these two elements to make a correct causal inference. Currently, most Video-LMMs acquire basic audio-visual-language alignment through large-scale pre-training. But this is just the first step. When faced with tasks requiring precise event timing, understanding complex spatio-temporal relationships, or finding key information in hours-long videos, these foundational models often fall short. This brings us to our main topic today: Post-Training. Post-training, as the name suggests, is a series of specialized, fine-grained training sessions conducted after initial pre-training is complete. Its goal is to enhance the model's advanced reasoning and alignment capabilities. Prior to this, related research methods were scattered and lacked a unified perspective. The emergence of this survey paper fills that gap by systematically organizing and summarizing these key techniques, providing a solid foundation for understanding and advancing video reasoning.",
+        "raw_content": "（约450字）\n在深入主题之前，我们先来了解一下背景。大型多模态模型（LMMs），比如大家熟知的GPT-4V，已经能够同时理解图像和文本。当我们将这种能力扩展到视频领域，就得到了Video-LMMs。然而，视频远比静态图片复杂。它包含了时间维度、动态变化、因果关系和长时序依赖。比如，要让模型判断视频里“一个人为什么会摔倒”，它不仅要看到“地上的水渍”，还要理解“他正在快速奔跑”这个动态过程，并将两者关联起来，才能做出正确的因果推理。\n当前，大多数Video-LMM通过大规模的预训练，掌握了基础的视听语言对齐能力。但这仅仅是第一步。当面对需要精确定位事件发生时间、理解复杂时空关系、或是在长达数小时的视频中寻找关键信息时，这些基础模型往往会显得力不从心。这就引出了我们今天的主题——“后训练”（Post-Training）。后训练，顾名思义，就是在模型完成基础预训练之后，进行的一系列专门化、精细化的“特训”，旨在提升其高级推理和对齐能力。在此之前，相关的研究方法零散分布，缺乏一个统一的视角。这篇综 vực 论文的出现，恰好填补了这一空白，它系统性地整理和归纳了这些关键技术，为我们理解和推动视频推理的发展提供了坚实的基础。",
+        "keywords": [
+          "Video-LMMs",
+          "Post-Training",
+          "Video Reasoning",
+          "Multimodal AI",
+          "Spatio-Temporal Understanding"
+        ],
+        "talking_points": [
+          "From Images to Videos: LMMs are being extended to video, but video's complexity (time, dynamics, causality) presents significant new challenges.",
+          "The Limits of Pre-Training: Standard pre-training provides basic alignment but is insufficient for advanced tasks like precise temporal reasoning or understanding long videos.",
+          "The Role of Post-Training: A specialized training phase to enhance a model's advanced reasoning and alignment capabilities after initial pre-training.",
+          "A Unified Perspective: This survey systematically organizes scattered post-training techniques, providing a foundational framework for the field."
+        ],
+        "background_prompt": "A clean, minimalist, and professional background with a subtle, abstract tech-themed pattern or a soft gradient. The overall tone is academic and focused.",
+        "image_prompt": "A modern infographic slide for an AI research presentation. The slide shows a clear progression from left to right. On the left, a simple icon of a neural network labeled 'LMMs' successfully analyzes a static image. An arrow points to the center, where a more complex film strip shows a dynamic event (e.g., a person running towards a puddle). This section is labeled 'Video-LMMs' and has a subtle question mark icon indicating a challenge. Another arrow points to the right, where a more advanced, glowing neural network icon is labeled 'Post-Training'. From this advanced icon, clear analytical lines connect the cause and effect within the film strip, symbolizing successful causal reasoning. The style is clean, with a limited color palette of blues and grays, using vector graphics and clear typography."
+      },
+      {
+        "title": "【技术原理详解】",
+        "content": "（约800字） 这篇综述的核心创新，在于它将繁杂的后训练方法，清晰地归纳为三大支柱。我们可以把这看作是提升Video-LMM推理能力的三套组合拳。 **第一大支柱，是“带思维链的监督微调”，英文缩写是SFT with Chain-of-Thought。** 首先，监督微调（SFT）本身很好理解，就像是给模型找一位老师，用高质量的“问题-答案”对来进行针对性教学，让模型学会如何按照指令回答问题。但对于复杂的视频推理任务，仅仅给出最终答案是不够的。这里就引入了“思维链”（Chain-of-Thought, CoT）技术。这相当于老师在教学生解一道复杂的数学题时，不仅给出最终答案，更重要的是把一步步的解题过程展示出来。应用在视频模型上，当被问及“视频中的比赛谁会赢？”时，带思维链的数据会引导模型先分析“A队队员配合更默契”，再观察到“B队核心球员体力不支”，最后综合这些证据得出“A队胜算更大”的结论。通过学习这种分步推理的过程，模型能够更好地处理需要多步逻辑和整合多模态证据的复杂任务。 **第二大支柱，是“基于可验证目标的强化学习”，英文缩写是RL。** SFT虽然有效，但它严重依赖于固定的数据集，有时模型的回答可能听起来合理，却与事实不符，或者不完全符合人类的偏好。强化学习（RL）则提供了一种更灵活的优化方式。我们可以把它比作训练宠物：当它做出正确的行为时，就给予奖励。对于Video-LMM，这个“奖励”可以来自于人类的反馈（比如人类评分员认为哪个回答更好），也可以来自于一个可验证的目标（比如模型定位的事件时间戳是否准确）。通过最大化奖励，模型会逐渐学会生成更符合人类偏好、或更忠于事实的回答。例如，在进行“事件时序定位”任务时，如果模型能准确地说出“事故发生在视频的第3分15秒”，它就会得到高分奖励，从而激励它不断提升定位的精确度。 **第三大支柱，是“通过增强推理计算的测试时扩展”，英文缩写是TTS。** 与前两者不同，TTS并非在训练阶段对模型进行修改，而是在用户提出问题、模型进行“推理”的那个瞬间，应用一些特殊技巧来增强其表现。这就像一个学生在考试时，被允许使用草稿纸和计算器来辅助思考。这些技术不需要重新训练模型，成本相对较低。例如，模型可以先生成多个不同的推理路径，然后内部进行评估和筛选，选出最可靠的一个作为最终答案。这种方法在不改变模型权重的情况下，通过增加推理时的计算量，来换取更高质量的输出，尤其适用于需要深度思考的复杂问题。 这三大支柱相辅相成：SFT为模型打下坚实的推理基础，RL在此基础上进行对齐和优化，而TTS则作为一种灵活的“临场增强”手段，进一步提升模型在关键任务上的表现。",
+        "raw_content": "（约800字）\n这篇综述的核心创新，在于它将繁杂的后训练方法，清晰地归纳为三大支柱。我们可以把这看作是提升Video-LMM推理能力的三套组合拳。\n**第一大支柱，是“带思维链的监督微调”，英文缩写是SFT with Chain-of-Thought。**\n首先，监督微调（SFT）本身很好理解，就像是给模型找一位老师，用高质量的“问题-答案”对来进行针对性教学，让模型学会如何按照指令回答问题。但对于复杂的视频推理任务，仅仅给出最终答案是不够的。这里就引入了“思维链”（Chain-of-Thought, CoT）技术。这相当于老师在教学生解一道复杂的数学题时，不仅给出最终答案，更重要的是把一步步的解题过程展示出来。应用在视频模型上，当被问及“视频中的比赛谁会赢？”时，带思维链的数据会引导模型先分析“A队队员配合更默契”，再观察到“B队核心球员体力不支”，最后综合这些证据得出“A队胜算更大”的结论。通过学习这种分步推理的过程，模型能够更好地处理需要多步逻辑和整合多模态证据的复杂任务。\n**第二大支柱，是“基于可验证目标的强化学习”，英文缩写是RL。**\nSFT虽然有效，但它严重依赖于固定的数据集，有时模型的回答可能听起来合理，却与事实不符，或者不完全符合人类的偏好。强化学习（RL）则提供了一种更灵活的优化方式。我们可以把它比作训练宠物：当它做出正确的行为时，就给予奖励。对于Video-LMM，这个“奖励”可以来自于人类的反馈（比如人类评分员认为哪个回答更好），也可以来自于一个可验证的目标（比如模型定位的事件时间戳是否准确）。通过最大化奖励，模型会逐渐学会生成更符合人类偏好、或更忠于事实的回答。例如，在进行“事件时序定位”任务时，如果模型能准确地说出“事故发生在视频的第3分15秒”，它就会得到高分奖励，从而激励它不断提升定位的精确度。\n**第三大支柱，是“通过增强推理计算的测试时扩展”，英文缩写是TTS。**\n与前两者不同，TTS并非在训练阶段对模型进行修改，而是在用户提出问题、模型进行“推理”的那个瞬间，应用一些特殊技巧来增强其表现。这就像一个学生在考试时，被允许使用草稿纸和计算器来辅助思考。这些技术不需要重新训练模型，成本相对较低。例如，模型可以先生成多个不同的推理路径，然后内部进行评估和筛选，选出最可靠的一个作为最终答案。这种方法在不改变模型权重的情况下，通过增加推理时的计算量，来换取更高质量的输出，尤其适用于需要深度思考的复杂问题。\n这三大支柱相辅相成：SFT为模型打下坚实的推理基础，RL在此基础上进行对齐和优化，而TTS则作为一种灵活的“临场增强”手段，进一步提升模型在关键任务上的表现。",
+        "keywords": [],
+        "talking_points": [],
+        "background_prompt": "Modern AI themed classroom slide",
+        "image_prompt": "A sleek, futuristic digital art illustration depicting the three pillars of advanced AI reasoning. Three towering, translucent holographic pillars stand in a minimalist, dark tech environment. The central pillar, representing \"SFT with Chain-of-Thought,\" is the most prominent, emitting a luminous data stream that visualizes a step-by-step logical process as a glowing flowchart with connected nodes. This flowchart analyzes a holographic projection of a basketball game, with nodes showing abstract icons for \"team coordination\" and \"player stamina\" leading to a final \"win probability\" outcome. Analytical lines and data points are overlaid on the holographic players. The other two pillars are slightly dimmer, displaying complex but abstract data patterns. The color palette is dominated by deep blues, cyans, and purples, with sharp, glowing white highlights. The atmosphere is clean, sophisticated, and educational, perfect for a tech presentation. Cinematic lighting, sharp focus, ultra-detailed."
+      },
+      {
+        "title": "【性能表现与应用】",
+        "content": "Since this paper is a survey, our contribution isn't a new model that sets a state-of-the-art record. Instead, through a systematic review, we demonstrate the immense value of post-training methods across a wide range of applications. For complex spatio-temporal reasoning, like analyzing tactical plays in a sports match, combining SFT with chain-of-thought allows the model to act like a commentator, methodically breaking down the game situation. In temporal event localization, such as finding the exact moment a package was taken from a long surveillance video, reinforcement learning with precisely designed reward functions can dramatically improve accuracy, reducing errors from the minute-level down to the second. For efficient long video processing, where traditional models might 'forget' earlier content, post-training techniques like Test-Time Scaling can optimize attention mechanisms or use a segment-and-integrate strategy. This enables models to effectively analyze videos several hours long for precise summarization or Q&A. Finally, these methods are vital for spatio-temporal grounding. When a user asks to 'find the person in the red shirt who is waving,' the model must precisely locate the target in both time and space. Post-training significantly enhances the model's ability to integrate these multi-modal cues for accurate grounding. In summary, these post-training pillars are collectively advancing Video-LMM performance, expanding their use from simple classification to complex tasks that require deep cognitive reasoning.",
+        "raw_content": "（约500字）\n由于本文是一篇综述，它并不提出一个新模型并刷新某个榜单的最高分，而是通过系统性地梳理，展示了这些后训练方法在各种应用场景中的巨大价值。\n在**复杂时空关系推理**方面，比如分析一场球赛的战术布局，SFT结合思维链的方法能够让模型像一个评论员一样，有条不紊地分析场上局势。\n在**事件时序定位**任务中，比如从一段长监控视频中找出“包裹是何时被取走的”，基于强化学习的方法通过设计精确的奖励函数，可以显著提升模型定位的准确性，将误差从分钟级降低到秒级。\n对于**长视频的高效处理**，传统的模型可能会因为视频过长而“遗忘”前面的内容。而后训练技术，特别是某些测试时扩展（TTS）方法，可以通过优化注意力机制或采用分段处理再整合的策略，让模型能够有效地分析长达数小时的视频，并进行精准的内容摘要或问答。\n此外，在**目标与动作的时空基准**（Spatio-temporal Grounding）任务上，这些方法也至关重要。比如，当用户指令是“找到那个穿着红色上衣、正在挥手的人”时，模型需要精确地在时间和空间上同时定位这个目标，后训练方法能够显著增强模型整合“红色上衣”、“挥手”等多模态线索并进行精确定位的能力。\n总而言之，这三大支柱共同推动了Video-LMM在各类视频理解基准和数据集上的性能提升，使其应用场景从简单的视频分类和打标签，扩展到真正需要深度认知和推理的复杂任务中。",
+        "keywords": [
+          "Video-LMMs",
+          "Post-Training Methods",
+          "Spatio-temporal Reasoning",
+          "Long Video Understanding",
+          "Event Localization"
+        ],
+        "talking_points": [
+          "Post-training methods unlock advanced capabilities beyond standard pre-training.",
+          "Enables complex spatio-temporal reasoning, like analyzing sports tactics.",
+          "Improves precision in tasks like temporal event localization in long videos.",
+          "Overcomes memory limitations for processing and summarizing hour-long content.",
+          "Enhances spatio-temporal grounding by integrating multi-modal user commands."
+        ],
+        "background_prompt": "Minimalist, dark tech background with a subtle, glowing grid pattern suggesting a digital space.",
+        "image_prompt": "A central, glowing neural network icon. From this center, four distinct quadrants emerge, each showcasing a different AI application on video. Quadrant 1: A stylized diagram of a soccer field with glowing lines showing player movement and tactical formations. Quadrant 2: A security camera video timeline with a magnifying glass pinpointing a specific frame of a person picking up a box. Quadrant 3: A long, scrolling film strip being processed and condensed into a concise text summary document. Quadrant 4: A video frame of a crowd with a precise, highlighted bounding box around a person wearing a red shirt and waving, with text labels 'red shirt' and 'waving' pointing to them. The overall aesthetic is a clean, futuristic infographic with a dark background and vibrant, glowing data visualizations."
+      },
+      {
+        "title": "【意义影响与展望】",
+        "content": "This paper represents a landmark contribution to the field. For the first time, it provides a clear and systematic framework for the somewhat fragmented research area of Video-LMM post-training. Our 'three-pillar' classification not only helps researchers understand the connections between existing works but also charts a course for future research. Think of it as a map, detailing different technical paths, their respective strengths and weaknesses, and how they can work in synergy. However, the paper also candidly addresses the open challenges that lie ahead, which we believe are critical directions for future work. First is reward design. Creating accurate and scalable reward functions for complex, subjective video tasks—like assessing a video's mood—remains a key open problem for reinforcement learning. Second is scalability. As videos become longer and higher-resolution, and models grow larger, ensuring the computational efficiency of these post-training methods is a core engineering challenge. Finally, there's the cost-performance trade-off. More sophisticated methods often come with higher computational costs. Finding the optimal balance between model performance and the costs of training and inference will be crucial for large-scale adoption. Future research will likely explore more efficient fine-tuning strategies, automated reward model design, and intelligent inference frameworks, all aimed at making Video-LMMs more powerful, efficient, and economical.",
+        "raw_content": "（约500字）\n这篇论文的学术意义是里程碑式的。它首次为Video-LMM后训练这个略显碎片化的研究领域，提供了一个清晰、系统的结构化框架。这个“三支柱”分类法，不仅帮助研究者理解现有工作的内在联系，更为未来的研究指明了方向。它就像一张地图，标示出了不同的技术路径、各自的优缺点以及它们如何协同工作。\n然而，论文同样坦诚地指出了当前面临的开放挑战，这也是未来研究的重点方向。\n首先，**奖励设计**依然是强化学习在视频领域应用的一大难题。如何为复杂的、主观的视频理解任务（比如“这段视频的氛围如何？”）设计一个既准确又可扩展的奖励函数，是一个关键的开放性问题。\n其次，**可扩展性**。随着视频分辨率越来越高、时长越来越长，以及模型参数规模的持续增长，如何保证这些后训练方法的计算效率和可扩展性，是一个核心的工程与科研挑战。\n最后，是**成本与性能的平衡**。更复杂的后训练方法，尤其是强化学习和一些测试时扩展技术，往往意味着更高的计算成本。如何在有限的资源下，找到优化模型性能与控制训练、推理成本之间的最佳平衡点，将是决定这些技术能否大规模落地的关键。\n未来的研究可能会探索更高效的微调策略、自动化的奖励模型设计，以及能够自适应调整计算资源的智能推理框架，从而推动Video-LMM向着更强大、更高效、更经济的方向发展。",
+        "keywords": [
+          "Structured Framework",
+          "Open Challenges",
+          "Reward Design",
+          "Scalability",
+          "Future Directions"
+        ],
+        "talking_points": [
+          "Contribution: Introduced the first systematic 'three-pillar' framework for Video-LMM post-training, providing a map for the field.",
+          "Challenge 1: Reward Design - Crafting effective reward functions for complex and subjective video tasks remains a major hurdle.",
+          "Challenge 2: Scalability & Cost - Balancing performance with computational cost is crucial as models and data scale.",
+          "Future Outlook: Research will focus on efficient fine-tuning, automated rewards, and adaptive inference to build more powerful and economical models."
+        ],
+        "background_prompt": "A dark, futuristic, and clean background with subtle grid lines or data streams, creating a high-tech and professional atmosphere.",
+        "image_prompt": "A futuristic, holographic blueprint of a grand structure supported by three glowing pillars. From these pillars, a luminous roadmap extends into the distance, branching into paths labeled 'Reward Design', 'Scalability', and 'Cost-Performance'. The overall aesthetic is clean, technical, and forward-looking, with a dark background and neon blue and white light, in the style of a minimalist infographic."
+      },
+      {
+        "title": "【总结】",
+        "content": "In conclusion, this paper offers a comprehensive guide to the advanced evolution of Video-LMMs. It systematically organizes the core methodologies for enhancing video reasoning capabilities through a taxonomy built on three pillars: Supervised Fine-Tuning with Chain-of-Thought, Reinforcement Learning-based Alignment, and Test-Time Extension. This work is more than a summary of the past; it's a beacon for the future. It highlights that creating truly intelligent video understanding systems depends not only on massive pre-training but also, critically, on sophisticated post-training. For all researchers in computer vision and multimodal AI, this survey is essential reading for grasping the field's frontier and sparking future innovation.",
+        "raw_content": "（约200字）\n总的来说，这篇论文为我们深入理解Video-LMM的“高级进化之路”提供了一份全面的指南。它通过构建“带思维链的监督微调”、“基于强化学习的对齐”和“测试时扩展”这三大支柱的分类体系，系统地梳理了提升视频模型推理能力的核心方法学。这不仅是对过去工作的总结，更是对未来的启示。它告诉我们，要打造真正智能的视频理解系统，不能仅仅依赖于更大规模的预训练，精细化的“后训练”同样至关重要。对于所有关注计算机视觉和多模态AI的研究者来说，这篇综述无疑是理解领域前沿、启发未来研究的必读文献。",
+        "keywords": [
+          "Video-LMM Evolution",
+          "Reasoning Enhancement",
+          "Three Pillars Taxonomy",
+          "Post-Training",
+          "Future Directions",
+          "Multimodal AI"
+        ],
+        "talking_points": [
+          "Provides a comprehensive guide to the advanced evolution of Video-LMMs.",
+          "Establishes a core taxonomy for reasoning enhancement built on three pillars: SFT with CoT, RL-based Alignment, and Test-Time Extension.",
+          "Emphasizes the critical importance of sophisticated post-training, not just large-scale pre-training.",
+          "Serves as an essential resource for understanding the state-of-the-art and inspiring future research."
+        ],
+        "background_prompt": "Dark, futuristic, high-tech background with subtle glowing grid lines.",
+        "image_prompt": "A minimalist, abstract visualization of an evolutionary path. The path is built upon three distinct, glowing pillars labeled 'SFT with CoT', 'RL-based Alignment', and 'Test-Time Extension'. The path ascends towards a bright, abstract representation of a highly intelligent AI or a futuristic brain. The style is clean, high-tech, with a dark background and neon blue and purple highlights, conveying a sense of progress and future possibilities. The overall composition should be balanced and clear, suitable for a presentation slide."
+      }
+    ]
+  },
+  "video_path": "./output/2510.05034_Video-LMM Post-Training_ A Deep Dive into Video Reasoning with Large Multimodal Models.mp4",
+  "subtitle_path": "./output/2510.05034_Video-LMM Post-Training_ A Deep Dive into Video Reasoning with Large Multimodal Models_subtitles.srt",
+  "video_info": {
+    "path": "./output/2510.05034_Video-LMM Post-Training_ A Deep Dive into Video Reasoning with Large Multimodal Models.mp4",
+    "duration": 595.306009,
+    "duration_formatted": "09:55",
+    "file_size": 19053359,
+    "file_size_mb": 18.17,
+    "resolution": [
+      1024,
+      1024
+    ]
+  },
+  "timestamp": "2025-10-07T23:14:31.537631",
+  "status": "success"
+}
