@@ -151,3 +151,8 @@ html { font-size: var(--font-size); }
   }
 }
 
+
+
+/* Guard: ensure Radix popper surfaces are opaque and above content */
+[data-radix-popper-content-wrapper] { z-index: 50; }
+[data-radix-popper-content-wrapper] .bg-popover { background-color: var(--popover) !important; }
