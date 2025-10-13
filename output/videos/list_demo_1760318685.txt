@@ -1,0 +1,13 @@
+file '/Users/yxp/Documents/ghpaperauto/output/slides/demo_1760308608_01.png'
+duration 3.0
+file '/Users/yxp/Documents/ghpaperauto/output/slides/demo_1760308608_02.png'
+duration 3.0
+file '/Users/yxp/Documents/ghpaperauto/output/slides/demo_1760308609_03.png'
+duration 3.0
+file '/Users/yxp/Documents/ghpaperauto/output/slides/demo_1760308609_04.png'
+duration 3.0
+file '/Users/yxp/Documents/ghpaperauto/output/slides/demo_1760308609_05.png'
+duration 3.0
+file '/Users/yxp/Documents/ghpaperauto/output/slides/demo_1760308609_06.png'
+duration 3.0
+file '/Users/yxp/Documents/ghpaperauto/output/slides/demo_1760308609_06.png'
