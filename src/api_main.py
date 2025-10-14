@@ -364,6 +364,22 @@ def run_complete_for_web(max_papers: int, out_dir: Path, log_cb):
         full = sc.get("narration") or ""
         # 构造两段旁白，若过短则补充要点
         a, b = _split_narr(full)
+        # if LLM provided high-quality narration_parts, prefer them
+        _np = sc.get("narration_parts") or []
+        if isinstance(_np, list) and len(_np) >= 2:
+            try:
+                a, b = str(_np[0] or ""), str(_np[1] or "")
+            except Exception:
+                pass
+
+        # quality metric for logs
+        def __ch_ratio(t: str) -> float:
+            ch = sum(1 for c in t if '\u4e00' <= c <= '\u9fff')
+            letters = sum(1 for c in t if c.isalpha())
+            denom = max(1, ch + letters)
+            return ch/denom
+        log_cb({"type":"log","message":f"[narr] quality | idx={idx} | lens={[len(a), len(b)]} | zh_ratio={[round(__ch_ratio(a),2), round(__ch_ratio(b),2)]}"})
+
         if len(a) < 60 and (sc.get("bullets") or []):
             a = (a + " " + "".join([str(x) for x in sc.get("bullets", [])[:2]])).strip()
         if len(b) < 60 and (sc.get("bullets") or []):

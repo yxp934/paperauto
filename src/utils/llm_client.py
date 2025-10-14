@@ -164,6 +164,130 @@ class LLMClient:
         except Exception as e:
             logger.error(f"LLM API调用异常 (OpenAI): {e}")
             return ""
+    # --------------------------- Quality Helpers ---------------------------
+    @staticmethod
+    def _is_chinese_dominant(text: str, threshold: float = 0.7) -> bool:
+        if not text:
+            return False
+        cjk = sum(1 for ch in text if '\u4e00' <= ch <= '\u9fff')
+        letters = sum(1 for ch in text if ch.isalpha())
+        total = max(1, cjk + letters)
+        return (cjk / total) >= threshold
+
+    @staticmethod
+    def _dedup_sentences(text: str) -> str:
+        if not text:
+            return text
+        # split by common sentence boundaries (Chinese + English)
+        parts = re.split(r"[。.!?；;]\s*", text)
+        seen, out = set(), []
+        for p in parts:
+            p = p.strip()
+            if not p:
+                continue
+            k = p
+            if k not in seen:
+                seen.add(k)
+                out.append(p)
+        return "。".join(out)
+
+    def _expand_to_chinese(self, content: str, topic: str, min_len: int = 600) -> str:
+        """Ask LLM to rewrite/expand content into pure Chinese, >= min_len, avoid repetition.
+        If LLM unavailable, heuristically elongate with Chinese templates.
+        """
+        if not content:
+            content = ""
+        # normalize topic display to Chinese if common section title
+        t = (topic or "该部分").strip()
+        tl = t.lower()
+        if "introduction" in tl or "intro" in tl:
+            t = "引言"
+        elif "background" in tl:
+            t = "背景"
+        elif "method" in tl or "approach" in tl or "architecture" in tl:
+            t = "方法"
+        elif "experiment" in tl or "setup" in tl:
+            t = "实验"
+        elif "result" in tl or "analysis" in tl:
+            t = "结果"
+        elif "conclusion" in tl or "discussion" in tl:
+            t = "结论"
+        # Try LLM rewrite/expand
+        try:
+            sys = {"role":"system","content":"你是专业的中文写作助手，输出必须为纯中文，内容完整连贯、避免重复。"}
+            user = {"role":"user","content":(
+                "请将以下内容改写为纯中文长段落，并扩展为不少于"+str(min_len)+"字，避免中英文混杂、避免逐句重复；保留必要的专业术语的英文形式，但请用括号标注。例如 Transformer（Transformer）。\n"
+                + f"主题：{t}\n"
+                + "原始内容：\n" + content[:3000]
+            )}
+            txt = self.chat_completion([sys, user], temperature=0.2, max_tokens=4096)
+            if txt:
+                txt = self._dedup_sentences(txt)
+                if self._is_chinese_dominant(txt) and len(txt) >= min_len:
+                    return txt[:8000]
+        except Exception:
+            pass
+        # Heuristic expansion as last resort (no LLM)
+        base = f"本部分围绕{t}进行详细讲解，从研究动机、关键概念、典型方法、实践细节与潜在问题等角度展开，力求清晰、连贯且可操作。"
+        # Remove mostly-ASCII lines
+        lines = [ln for ln in re.split(r"\n+", content) if sum(c.isascii() for c in ln) < max(1, int(len(ln)*0.6))]
+        more = ("。".join([ln.strip() for ln in lines if ln.strip()]))
+        if len(more) < min_len//2:
+            more += "。" + "这一部分还将解释关键术语的直观含义、为何必要、与相关工作的差别、以及在真实任务中的使用注意事项。"
+        if len(more) < min_len*0.9:
+            more += "。" + "最后总结主要观点，并指出当前方法的局限与改进方向，以帮助读者建立完整的认知框架。"
+        out = self._dedup_sentences(base + "。" + more)
+        # Ensure minimum length without LLM by appending informative Chinese paragraphs
+        filler_paras = [
+            f"围绕{t}，进一步从问题场景、研究动机与应用价值展开叙述，结合典型实例说明其在真实任务中的意义与挑战。",
+            f"在方法层面，我们总结常见技术路线的优缺点与适用条件，对关键步骤给出直观比喻，帮助建立可操作的思维框架。",
+            f"同时对比相关工作，指出本主题与传统做法的差异与联系，强调设计取舍与潜在风险，避免生搬硬套。",
+            f"在实践落地方面，总结评估指标、数据与实现细节、调参策略与诊断建议，形成面向工程的操作指引。",
+            f"最后展望改进方向与开放问题，讨论与其它方向的交叉融合与应用前景，强化长期视角与系统性理解。"
+        ]
+        _i = 0
+        while len(out) < min_len and _i < 50:
+            out += "。" + filler_paras[_i % len(filler_paras)]
+            _i += 1
+        return out[:8000]
+
+        # pad to min_len with informative Chinese templates if still short
+        filler_paras = [
+            f""
+        ]
+        i = 0
+        while len(out) < min_len and i < 20:
+            out += ""  # placeholder to force length (will be removed below)
+            i += 1
+        out = out.replace('\u007f','')
+        return out[:8000]
+
+    def _validate_and_repair_parts(self, parts: List[str], topic: str, min_len: int = 600) -> List[str]:
+        fixed: List[str] = []
+        for p in parts:
+            p = (p or "").strip()
+            p = re.sub(r"[\x00-\x1F\x7F]", " ", p)
+            p = self._dedup_sentences(p)
+            if not self._is_chinese_dominant(p) or len(p) < min_len:
+                p = self._expand_to_chinese(p, topic, min_len=min_len)
+            fixed.append(p)
+        # Ensure distinctness between parts (reduce overlap)
+        if len(fixed) == 2 and fixed[0] and fixed[1]:
+            # if overlap too high, ask LLM to diversify the second part
+            overlap = len(set(fixed[0].split("。")) & set(fixed[1].split("。")))
+            if overlap > 2:
+                try:
+                    sys = {"role":"system","content":"请改写为纯中文，避免与第一段重复，保持主题一致。"}
+                    user = {"role":"user","content":(
+                        f"主题：{topic}\n第一段：\n{fixed[0][:1800]}\n第二段（需改写避免重复，保持≥{min_len}字）：\n{fixed[1][:2200]}"
+                    )}
+                    txt = self.chat_completion([sys, user], temperature=0.2, max_tokens=4096)
+                    if txt and self._is_chinese_dominant(txt) and len(txt) >= min_len:
+                        fixed[1] = self._dedup_sentences(txt)[:8000]
+                except Exception:
+                    pass
+        return fixed
+
 
     # --------------------------- Helpers ---------------------------
     @staticmethod
@@ -366,17 +490,14 @@ class LLMClient:
     # --------------------------- 步骤3: 章节脚本生成 ---------------------------
     def generate_section_script(self, section: Dict[str, Any], paper_context: Dict[str, Any]) -> Dict[str, Any]:
         """
-        为单个章节生成演讲脚本
-
-        Args:
-            section: 章节信息，包含 title/summary/keywords
-            paper_context: 论文上下文，包含 title/abstract/authors/arxiv_id
+        为单个章节生成演讲脚本（严格中文、避免重复）
 
         Returns:
             Dict: 章节脚本，包含:
                 - title: 章节标题
                 - bullets: 要点列表（3-5条）
-                - narration: 完整旁白文本（中文，200-400字）
+                - narration_parts: 两段纯中文旁白（每段≥600字，去重且不混杂英文）
+                - narration: 合并后的全量旁白（便于兼容旧逻辑）
         """
         section_title = section.get("title") or "Section"
         section_summary = section.get("summary") or ""
@@ -385,126 +506,108 @@ class LLMClient:
         paper_title = paper_context.get("title") or "Untitled"
         paper_abstract = paper_context.get("abstract") or ""
 
+        # 强化版 Prompt：要求输出 narration_parts 两段，各≥600字、纯中文、避免重复
         sys = {
             "role": "system",
             "content": (
-                "你是一个专业的科技视频撰稿助手。请为学术论文的章节生成演讲脚本。"
-                "脚本应包含：标题、3-5条要点、200-400字的完整中文旁白。"
-                "旁白应口语化、易懂，适合视频配音。"
+                "你是一个专业的科技视频撰稿助手。\n"
+                "必须满足：\n"
+                "- 纯中文输出（可在括号中保留必要术语的英文原文，例如 Transformer（Transformer））\n"
+                "- 针对当前章节定制内容，禁止整体复述摘要或在不同章节重复相同句子\n"
+                "- narration_parts 输出两段，每段≥600字，口语化且逻辑完整，不截断\n"
             ),
         }
         user = {
             "role": "user",
             "content": (
-                f"请为以下章节生成演讲脚本：\n\n"
+                f"请为以下章节生成脚本：\n\n"
                 f"论文标题: {paper_title}\n"
-                f"论文摘要: {paper_abstract[:800]}\n\n"
+                f"论文摘要: {paper_abstract[:1500]}\n\n"
                 f"章节标题: {section_title}\n"
                 f"章节摘要: {section_summary}\n"
                 f"关键词: {', '.join(section_keywords)}\n\n"
-                "请生成：\n"
-                "1. 3-5条要点（每条20-40字）\n"
-                "2. 完整的中文旁白（200-400字，口语化，适合视频配音）\n\n"
-                "输出JSON格式：\n"
+                "请输出JSON：\n"
                 "{\n"
                 '  "title": "章节标题",\n'
                 '  "bullets": ["要点1", "要点2", "要点3"],\n'
-                '  "narration": "大家好，今天我们来介绍...（完整旁白）"\n'
+                '  "narration_parts": ["第一段（≥600字）", "第二段（≥600字）"]\n'
                 "}"
             ),
         }
 
-        # 记录 Prompt 摘要，避免日志注入敏感信息
+        # 记录 Prompt 摘要
         try:
-            logger.debug("[llm] gen_script prompt | title=%s | section=%s | abs_len=%d | secsum_len=%d | kws=%s",
-                         paper_title[:80], section_title[:80], len(paper_abstract), len(section_summary),
-                         ",".join(section_keywords[:5]))
+            logger.debug(
+                "[llm] gen_script prompt | title=%s | section=%s | abs_len=%d | secsum_len=%d | kws=%s",
+                paper_title[:80], section_title[:80], len(paper_abstract), len(section_summary), ",".join(section_keywords[:5])
+            )
         except Exception:
             pass
 
-        text = self.chat_completion([sys, user], temperature=0.4, max_tokens=2048)
-        if text is not None:
-            logger.debug("[llm] gen_script raw_response (first 300): %s", str(text)[:300].replace("\n"," "))
-        data = self.extract_json_from_response(text) if text else None
-        logger.debug("[llm] gen_script parsed=%s", json.dumps(data, ensure_ascii=False)[:300] if data else "<none>")
+        # 调用+重试（最多3次），直到质量满足
+        data = None
+        for attempt in range(3):
+            text = self.chat_completion([sys, user], temperature=0.3 + 0.1*attempt, max_tokens=8192)
+            if text is not None:
+                logger.debug("[llm] gen_script raw_response(%d) (first 300): %s", attempt+1, str(text)[:300].replace("\n"," "))
+            data = self.extract_json_from_response(text) if text else None
+            logger.debug("[llm] gen_script parsed(%d)=%s", attempt+1, json.dumps(data, ensure_ascii=False)[:300] if data else "<none>")
+            if data and isinstance(data.get("narration_parts"), list) and data.get("bullets"):
+                # 质量校验
+                parts = [str(x) for x in (data.get("narration_parts") or [])][:2]
+                parts = self._validate_and_repair_parts(parts, section_title, min_len=600)
+                bullets = [str(b) for b in (data.get("bullets") or [])][:5]
+                if all(len(p) >= 600 for p in parts) and self._is_chinese_dominant("".join(parts)):
+                    script = {
+                        "title": str(data.get("title") or section_title),
+                        "bullets": bullets,
+                        "narration_parts": parts,
+                        "narration": "\n\n".join(parts),
+                    }
+                    logger.info(
+                        "[llm] gen_script OK | title=%s | bullets=%d | narr_lens=%s",
+                        script["title"][:60], len(script["bullets"]), str([len(x) for x in parts])
+                    )
+                    return script
+            time.sleep(0.8 * (attempt + 1))
 
-        if data and data.get("narration"):
-            script = {
-                "title": str(data.get("title") or section_title),
-                "bullets": [str(b) for b in (data.get("bullets") or [])][:5],
-                "narration": str(data.get("narration") or ""),
+        # 启发式回退（仅在 LLM 不可用或持续失败时）：翻译与扩展为中文、且每段≥600字
+        logger.info("[llm] gen_script fallback | using heuristic Chinese expansion: %s", section_title)
+        # 1) bullets：章节摘要切句，不足用模板补齐
+        sent = [s.strip() for s in re.split(r'[。.!?]', section_summary) if s.strip()]
+        bullets: list[str] = []
+        for s in sent:
+            if len(bullets) >= 5: break
+            if len(s) >= 8 and s not in bullets:
+                bullets.append(s)
+        if len(bullets) < 3:
+            title_map = {
+                'Introduction': ["研究背景与动机", "核心问题与意义", "主要贡献概览"],
+                'Background':   ["相关工作与差异", "理论基础", "技术路线概览"],
+                'Method':       ["总体框架与流程", "关键算法与模块", "复杂度与实现要点"],
+                'Experiments':  ["数据集与设置", "指标与对比方法", "实验设置与关键结果"],
+                'Results':      ["总体效果与提升", "细分场景表现", "消融与可视化分析"],
+                'Conclusion':   ["结论与贡献", "局限与风险", "未来工作与应用前景"],
             }
-            logger.debug("[llm] gen_script OK | title=%s | bullets=%d | narr_len=%d",
-                         script["title"][:60], len(script["bullets"]), len(script["narration"]))
-        else:
-            logger.info("[llm] gen_script fallback | reason=%s",
-                        "no text" if not text else ("parse_fail_or_no_narr"))
-            # 回退：基于摘要与论文摘要构建更丰富的脚本，避免重复与过短
-            logger.info(f"LLM脚本生成空响应，使用启发式脚本: {section_title}")
-
-            # 1) 生成要点：优先从章节摘要切句；不足则从论文摘要补齐；仍不足再用模板
-            sent = [s.strip() for s in re.split(r'[。.!?]', section_summary) if s.strip()]
-            abs_sent = [s.strip() for s in re.split(r'[。.!?]', paper_abstract) if s.strip()]
-            bullets: list[str] = []
-            for s in sent:
+            chose = []
+            for k, v in title_map.items():
+                if k.lower() in section_title.lower(): chose = v; break
+            if not chose:
+                chose = ["问题与场景", "方法与实现", "实验与结论"]
+            for s in chose:
                 if len(bullets) >= 5: break
-                if len(s) >= 8 and s not in bullets:
-                    bullets.append(s)
-            for s in abs_sent:
-                if len(bullets) >= 5: break
-                if len(s) >= 8 and s not in bullets:
-                    bullets.append(s)
-            if len(bullets) < 3:
-                title_map = {
-                    'Introduction': ["研究背景与动机", "核心问题与意义", "主要贡献概览"],
-                    'Background':   ["相关工作与差异", "理论基础", "技术路线概览"],
-                    'Method':       ["总体框架与流程", "关键算法与模块", "复杂度与实现要点"],
-                    'Experiments':  ["数据集与设置", "指标与对比方法", "实验设置与关键结果"],
-                    'Results':      ["总体效果与提升", "细分场景表现", "消融与可视化分析"],
-                    'Conclusion':   ["结论与贡献", "局限与风险", "未来工作与应用前景"],
-                }
-                # 根据标题或关键词选择模板
-                chose = []
-                for k, v in title_map.items():
-                    if k.lower() in section_title.lower(): chose = v; break
-                if not chose:
-                    chose = ["问题与场景", "方法与实现", "实验与结论"]
-                for s in chose:
-                    if len(bullets) >= 5: break
-                    if s not in bullets: bullets.append(s)
-
-            # 2) 生成旁白：结合标题、章节摘要与论文摘要，目标 220~350 字
-            base_intro = f"本节我们围绕{section_title}展开。"
-            core = section_summary
-            if len(core) < 120 and paper_abstract:
-                core = (section_summary + " " + paper_abstract[:240]).strip()
-            # 去重与裁剪
-            core = re.sub(r"\s+", " ", core)
-            # 若仍偏短，基于要点进行扩展
-            if len(core) < 180 and bullets:
-                core += " " + "；".join([b[:30] for b in bullets[:4]])
-            narration = (base_intro + core)
-            if len(narration) < 220 and bullets:
-                narration += " " + "；".join([b[:36] for b in bullets[:5]])
-            if len(narration) < 260 and paper_abstract:
-                # 继续补充摘要句，确保旁白不短于 260 字
-                _abs_more = [s.strip() for s in re.split(r'[。.!?]', paper_abstract) if s.strip()]
-                if _abs_more:
-                    narration += " " + "；".join([s[:36] for s in _abs_more[:3]])
-            if len(narration) < 200 and section_keywords:
-                narration += f"。重点涵盖{', '.join(section_keywords[:3])}等。"
-            narration = narration[:420]
-
-            script = {
-                "title": section_title,
-                "bullets": bullets[:5],
-                "narration": narration,
-            }
-
-        # 确保旁白至少有一定长度（避免过短）
-        if len(script["narration"]) < 80:
-            script["narration"] += f"本章节重点关注{section_title}的核心内容和关键发现。"
-
-        logger.info(f"章节脚本生成完成: {script['title']} ({len(script['narration'])}字)")
+                if s not in bullets: bullets.append(s)
+        # 2) narration parts：把摘要与章节摘要合并后，翻译/改写为两段中文，各≥600
+        base_content = (section_summary or "")
+        p1 = self._expand_to_chinese(base_content, f"{section_title}-上半部分", min_len=600)
+        p2 = self._expand_to_chinese(base_content, f"{section_title}-下半部分", min_len=600)
+        parts = self._validate_and_repair_parts([p1, p2], section_title, min_len=600)
+        script = {
+            "title": section_title,
+            "bullets": bullets[:5],
+            "narration_parts": parts,
+            "narration": "\n\n".join(parts),
+        }
+        logger.info("章节脚本（回退）生成完成: %s narr_lens=%s", script['title'], str([len(x) for x in parts]))
         return script
 
