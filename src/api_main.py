@@ -240,7 +240,7 @@ def run_complete_for_web(max_papers: int, out_dir: Path, log_cb):
     with _f.ThreadPoolExecutor(max_workers=1) as ex:
         fut = ex.submit(llm.analyze_paper_structure, paper_dict)
         try:
-            sections = fut.result(timeout=int(os.getenv('LLM_ANALYZE_TIMEOUT', '12')))
+            sections = fut.result(timeout=int(os.getenv('LLM_ANALYZE_TIMEOUT', '35')))
         except Exception:
             sections = _heuristic_sections_from_paper(paper)
 
@@ -251,14 +251,75 @@ def run_complete_for_web(max_papers: int, out_dir: Path, log_cb):
         with _f.ThreadPoolExecutor(max_workers=1) as ex:
             fut = ex.submit(_gen_script, s)
             try:
-                scripts.append(fut.result(timeout=int(os.getenv('LLM_SCRIPT_TIMEOUT', '12'))))
-            except Exception:
-                # Heuristic narration from summary
-                scripts.append({
-                    "title": s.get("title") or "内容",
-                    "bullets": [],
-                    "narration": (s.get("summary") or paper_dict['abstract'] or paper_dict['title'])[:220]
-                })
+                scr = fut.result(timeout=int(os.getenv('LLM_SCRIPT_TIMEOUT', '35')))
+                scripts.append(scr)
+            except Exception as e:
+                log_cb({"type":"log","message":f"[llm] WARN script gen timeout -> heuristic for {s.get('title')}"})
+                # Robust heuristic: ensure 3-5 meaningful bullets and 200+ char narration
+                sec_title = (s.get('title') or '').strip()
+                sec_sum = (s.get('summary') or '').strip()
+                abs_txt = (paper_dict.get('abstract') or '').strip()
+                # split by sentence
+                import re as _re
+                bullets = [b.strip() for b in _re.split(r"[\u3002.!?]\s*", sec_sum) if b.strip()]
+    # Enrich scripts if bullets too few
+                if len(bullets) < 3 and abs_txt:
+                    bullets += [b.strip() for b in _re.split(r"[\u3002.!?]\s*", abs_txt) if b.strip()][:5]
+                # template supplement by section title
+                templates = []
+                if any(k in sec_title for k in ["方法","架构","Method"]):
+                    templates = ["总体思路与流程","关键模块与算法","训练与推理细节","复杂度与局限性"]
+                elif any(k in sec_title for k in ["实验","结果","Experiments","Results"]):
+                    templates = ["数据集与设置","对比方法与指标","主要结果与可视化","消融与误差分析"]
+                elif any(k in sec_title for k in ["概览","引言","背景","Overview","Introduction","Background"]):
+                    templates = ["研究动机与问题","核心贡献","方法直观说明","潜在应用"]
+                if len(bullets) < 3:
+                    for t in templates:
+                        if t not in bullets:
+                            bullets.append(t)
+                        if len(bullets) >= 5:
+                            break
+                bullets = bullets[:5]
+                if not bullets:
+                    bullets = ["要点提取失败：请参见摘要与标题"]
+                # narration
+                intro = f"本节围绕{sec_title or '该部分'}展开，"
+                narr_body = (sec_sum or abs_txt or paper_dict.get('title') or '')
+                narr = (intro + narr_body + "。要点包括：" + "；".join(bullets) + "。")
+                if len(narr) < 220 and abs_txt:
+                    narr = (narr + " " + abs_txt)[:480]
+                scr = {"title": sec_title or 'Section', "bullets": bullets, "narration": narr}
+                scripts.append(scr)
+
+    import re as __re_enr
+    for si, sc in enumerate(scripts):
+        bl = [b.strip() for b in (sc.get('bullets') or []) if str(b).strip()]
+        if len(bl) < 3:
+            add_from_abs = [b.strip() for b in __re_enr.split(r"[\u3002.!?]\s*", paper_dict.get('abstract') or '') if b.strip()][:5]
+            bl += [x for x in add_from_abs if x and x not in bl]
+            # section-specific templates
+            st = (sc.get('title') or '')
+            tpl = []
+            if any(k in st for k in ["方法","架构","Method"]):
+                tpl = ["总体思路与流程","关键模块与算法","训练与推理细节","复杂度与局限性"]
+            elif any(k in st for k in ["实验","结果","Experiments","Results"]):
+                tpl = ["数据集与设置","对比方法与指标","主要结果与可视化","消融与误差分析"]
+            elif any(k in st for k in ["概览","引言","背景","Overview","Introduction","Background"]):
+                tpl = ["研究动机与问题","核心贡献","方法直观说明","潜在应用"]
+            for t in tpl:
+                if len(bl) >= 5: break
+                if t not in bl:
+                    bl.append(t)
+            sc['bullets'] = bl[:5]
+            # ensure narration rich
+            if len((sc.get('narration') or '')) < 200:
+                sc['narration'] = (f"本节围绕{st or '该部分'}展开，" + (paper_dict.get('abstract') or '') + "。要点包括：" + "；".join(sc['bullets']) + "。")[:600]
+        # re-log after enrichment
+        _bl2 = sc.get('bullets') or []
+        log_cb({"type":"log","message":f"[llm] script enriched | title={sc.get('title')} | bullets={len(_bl2)} | narr_len={len(sc.get('narration') or '')}"})
+
+        _bl = scr.get('bullets') or []
+        log_cb({"type":"log","message":f"[llm] script obj | title={scr.get('title')} | bullets={len(_bl)} | narr_len={len(scr.get('narration') or '')} | bullet_head={(_bl[0][:24] if _bl else '')}"})
     log_cb({"type":"log","message":"[llm] script generated"})
 
     # Step 4-6: Render 6 slides using CJK font helper
@@ -267,8 +328,11 @@ def run_complete_for_web(max_papers: int, out_dir: Path, log_cb):
         # two slides per section: title-only and bullet points
         p1 = base_slides / f"{_sanitize(arxiv_id)}_{_now_ts()}_{i*2-1:02d}.png"
         p2 = base_slides / f"{_sanitize(arxiv_id)}_{_now_ts()}_{i*2:02d}.png"
-        log_cb({"type":"log","message":f"[slides] rendering {i*2-1}/6"}); _write_text_slide(sc['title'], sc.get('bullets') or [], p1)
-        log_cb({"type":"log","message":f"[slides] rendering {i*2}/6"}); _write_text_slide(sc['title'], sc.get('bullets') or [], p2)
+        _bul = sc.get('bullets') or []
+        log_cb({"type":"log","message":f"[slides] rendering {i*2-1}/6 | bullets={len(_bul)} | head={(_bul[0][:20] if _bul else '')}"});
+        _write_text_slide(sc['title'], _bul, p1)
+        log_cb({"type":"log","message":f"[slides] rendering {i*2}/6   | bullets={len(_bul)} | head={(_bul[1][:20] if len(_bul)>1 else (_bul[0][:20] if _bul else ''))}"});
+        _write_text_slide(sc['title'], _bul, p2)
         slide_paths += [str(p1), str(p2)]
 
     # Step 7: TTS（为每个章节拆成两段，避免两页读同一段）
@@ -284,9 +348,9 @@ def run_complete_for_web(max_papers: int, out_dir: Path, log_cb):
             L = len(n)//2 or len(n)
             return (n[:L], n[L:])
         mid = max(1, len(parts)//2)
-        a = "".join(parts[:mid])
-        b = "".join(parts[mid:])
-        return (a.replace("\u0001", "").replace("\u001a", ""), b.replace("\u0001", "").replace("\u001a", ""))
+        a = "。".join(parts[:mid]).strip()
+        b = "。".join(parts[mid:]).strip()
+        return (a, b)
 
     for idx, sc in enumerate(scripts, start=1):
         full = sc.get("narration") or ""
@@ -296,6 +360,12 @@ def run_complete_for_web(max_papers: int, out_dir: Path, log_cb):
             a = (a + " " + "".join([str(x) for x in sc.get("bullets", [])[:2]])).strip()
         if len(b) < 60 and (sc.get("bullets") or []):
             b = (b + " " + "".join([str(x) for x in sc.get("bullets", [])[2:5]])).strip()
+        # sanitize TTS text: strip control chars, ensure readable separators
+        import re as __re
+        a = __re.sub(r"[\x00-\x1F\x7F]", " ", a)
+        b = __re.sub(r"[\x00-\x1F\x7F]", " ", b)
+        log_cb({"type":"log","message":f"[tts] input | idx={idx} | a_len={len(a)} | b_len={len(b)} | a_head={(a[:30])} | b_head={(b[:30])}"})
+
 
         mp3_1, dur1 = ds_tts(a or full)
         mp3_2, dur2 = ds_tts(b or full)
@@ -306,6 +376,7 @@ def run_complete_for_web(max_papers: int, out_dir: Path, log_cb):
         subprocess.run(["ffmpeg","-y","-i", mp3_1, "-ar","22050","-ac","1", wav1], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         subprocess.run(["ffmpeg","-y","-i", mp3_2, "-ar","22050","-ac","1", wav2], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         audio_wavs.extend([wav1, wav2]); durations.extend([dur1, dur2])
+        log_cb({"type":"log","message":f"[tts] to-wav done | {base_idx+1},{base_idx+2}"})
         log_cb({"type":"log","message":f"[tts] synthesized segment {base_idx+1}/{total_segments}"})
         log_cb({"type":"log","message":f"[tts] synthesized segment {base_idx+2}/{total_segments}"})
 

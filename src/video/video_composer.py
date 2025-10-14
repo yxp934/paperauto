@@ -26,7 +26,7 @@ class VideoComposer:
         with open(list_file, "w") as f:
             for p, d in zip(slide_paths, durations):
                 f.write(f"file '{os.path.abspath(p)}'\n")
-                f.write(f"duration {max(6.0, float(d))}\n")  # 最小 6.0 秒，避免视频过短
+                f.write(f"duration {max(10.0, float(d))}\n")  # 最小 10.0 秒，保证时长充足
             # repeat last frame
             f.write(f"file '{os.path.abspath(slide_paths[-1])}'\n")
         video_track = os.path.join(self.tmp_dir, "slides_video.mp4")
@@ -34,7 +34,7 @@ class VideoComposer:
         cmd_video = [
             "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_file,
             "-vf", "scale=1920:1080,format=yuv420p",
-            "-c:v", "libx264", "-crf", "16", "-preset", "medium",
+            "-c:v", "libx264", "-crf", "14", "-preset", "medium",
             "-pix_fmt", "yuv420p", "-r", "30",
             "-movflags", "+faststart",
             video_track,
@@ -73,7 +73,7 @@ class VideoComposer:
             "-i", video_track,
             "-i", audio_track,
             "-c:v", "copy",
-            "-c:a", "aac", "-b:a", "192k",
+            "-c:a", "aac", "-b:a", "256k",
             # 移除 -shortest，让视频和音频都完整保留
             out_path
         ]

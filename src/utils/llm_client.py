@@ -414,8 +414,19 @@ class LLMClient:
             ),
         }
 
+        # 记录 Prompt 摘要，避免日志注入敏感信息
+        try:
+            logger.debug("[llm] gen_script prompt | title=%s | section=%s | abs_len=%d | secsum_len=%d | kws=%s",
+                         paper_title[:80], section_title[:80], len(paper_abstract), len(section_summary),
+                         ",".join(section_keywords[:5]))
+        except Exception:
+            pass
+
         text = self.chat_completion([sys, user], temperature=0.4, max_tokens=2048)
+        if text is not None:
+            logger.debug("[llm] gen_script raw_response (first 300): %s", str(text)[:300].replace("\n"," "))
         data = self.extract_json_from_response(text) if text else None
+        logger.debug("[llm] gen_script parsed=%s", json.dumps(data, ensure_ascii=False)[:300] if data else "<none>")
 
         if data and data.get("narration"):
             script = {
@@ -423,7 +434,11 @@ class LLMClient:
                 "bullets": [str(b) for b in (data.get("bullets") or [])][:5],
                 "narration": str(data.get("narration") or ""),
             }
+            logger.debug("[llm] gen_script OK | title=%s | bullets=%d | narr_len=%d",
+                         script["title"][:60], len(script["bullets"]), len(script["narration"]))
         else:
+            logger.info("[llm] gen_script fallback | reason=%s",
+                        "no text" if not text else ("parse_fail_or_no_narr"))
             # 回退：基于摘要与论文摘要构建更丰富的脚本，避免重复与过短
             logger.info(f"LLM脚本生成空响应，使用启发式脚本: {section_title}")
 
