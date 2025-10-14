@@ -33,6 +33,14 @@ except Exception:
     # optional; web mode uses run_complete_for_web
     pass
 
+# Import A2A workflow
+try:
+    from graph.workflow import A2AWorkflow
+    from src.utils.llm_client import LLMClient
+    a2a_available = True
+except Exception:
+    a2a_available = False
+
 
 # CORS for local dev
 origins = [
@@ -161,6 +169,43 @@ def _write_text_slide(title: str, bullets: list[str], out: Path, size=(1920,1080
         y += 90
     out.parent.mkdir(parents=True, exist_ok=True)
     img.save(str(out), 'PNG', optimize=True)
+
+
+def _write_slide_with_image(title: str, bullets: list[str], image_path: str | None, out_path: Path, size=(1920,1080)):
+    """Write slide with text and image"""
+    img = Image.new('RGB', size, color=(30,40,60))
+    draw = ImageDraw.Draw(img)
+
+    # Load fonts
+    ft = _load_font(56)
+    fb = _load_font(36)
+
+    # Title
+    draw.text((60, 40), (title or "")[0:50], fill=(255,255,255), font=ft)
+
+    # If image available, place it on the right side
+    if image_path and Path(image_path).exists():
+        try:
+            gen_img = Image.open(image_path)
+            # Resize to fit right half
+            img_w, img_h = 800, 800
+            gen_img = gen_img.resize((img_w, img_h), Image.Resampling.LANCZOS)
+            # Paste on right side
+            img.paste(gen_img, (1920 - img_w - 60, (1080 - img_h) // 2))
+        except Exception as e:
+            pass  # If image loading fails, just skip it
+
+    # Bullets on left side
+    y = 150
+    max_bullet_width = 900 if image_path else 1700
+    for b in (bullets or [])[:6]:
+        bullet_text = f"• {str(b)[0:60]}"
+        draw.text((80, y), bullet_text, fill=(220,220,220), font=fb)
+        y += 80
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    img.save(str(out_path), 'PNG', optimize=True)
+
 
 # --- Web-facing minimal pipeline for Generate page (structured logs) ---
 from typing import Tuple
@@ -422,6 +467,120 @@ def run_complete_for_web(max_papers: int, out_dir: Path, log_cb):
         'pptx': None,
     }
 
+
+def run_complete_a2a(max_papers: int, out_dir: Path, log_cb):
+    """
+    A2A multi-agent workflow version of complete pipeline
+    """
+    if not a2a_available:
+        log_cb({"type":"log","message":"[A2A] workflow not available, falling back to standard pipeline"})
+        return run_complete_for_web(max_papers, out_dir, log_cb)
+
+    base_slides = out_dir / "slides"
+    base_vid = out_dir / "videos"
+    base_slides.mkdir(parents=True, exist_ok=True)
+    base_vid.mkdir(parents=True, exist_ok=True)
+
+    # Step 1: fetch papers
+    log_cb({"type":"log","message":"[A2A] fetching papers"})
+    from src.papers.fetch_papers import get_daily_papers, get_recent_papers
+    papers = get_daily_papers(max_results=max_papers)
+    if not papers:
+        log_cb({"type":"log","message":"[A2A] HF daily empty, fallback to arXiv"})
+        papers = get_recent_papers(max_results=max_papers)
+
+    if not papers:
+        raise Exception("no papers fetched")
+
+    paper = papers[0]
+    arxiv_id = getattr(paper, 'id', None) or getattr(paper, 'arxiv_id', None) or "unknown"
+
+    paper_dict = {
+        "title": getattr(paper, 'title', ''),
+        "abstract": getattr(paper, 'description', '') or getattr(paper, 'abstract', ''),
+        "authors": getattr(paper, 'authors', []),
+        "arxiv_id": arxiv_id,
+    }
+
+    log_cb({"type":"paper","id": arxiv_id, "title": paper_dict['title'], "authors": paper_dict['authors'], "url": f"https://arxiv.org/abs/{arxiv_id}"})
+
+    # Step 2: Run A2A workflow
+    log_cb({"type":"log","message":"[A2A] initializing workflow"})
+    llm = LLMClient()
+    workflow = A2AWorkflow(llm, log_callback=log_cb)
+
+    log_cb({"type":"status","status":"running","progress":0.1, "message":"[A2A] running multi-agent workflow"})
+    result = workflow.run(paper_dict, max_qa_retries=1)
+
+    scripts = result['scripts']
+    slides_data = result['slides']
+    meta = result['meta']
+
+    log_cb({"type":"log","message":f"[A2A] workflow complete: {len(scripts)} scripts, {meta['total_tokens']} tokens, ${meta['total_cost']:.4f}"})
+
+    # Step 3: Render slides with images
+    log_cb({"type":"status","status":"running","progress":0.5, "message":"[A2A] rendering slides"})
+    slide_paths = []
+    for i, slide_data in enumerate(slides_data):
+        slide_path = base_slides / f"{_sanitize(arxiv_id)}_{_now_ts()}_{i+1:02d}.png"
+        _write_slide_with_image(
+            title=slide_data['title'],
+            bullets=slide_data['bullets'],
+            image_path=slide_data.get('image_path'),
+            out_path=slide_path
+        )
+        slide_paths.append(str(slide_path))
+        log_cb({"type":"log","message":f"[A2A] rendered slide {i+1}/{len(slides_data)}"})
+
+    # Step 4: TTS
+    log_cb({"type":"status","status":"running","progress":0.7, "message":"[A2A] generating audio"})
+    from src.video.tts_dashscope import generate_audio as ds_tts
+    audio_wavs = []
+    durations = []
+    subtitle_texts = []
+
+    for i, script in enumerate(scripts):
+        parts = script.get('narration_parts', [])
+        if len(parts) < 2:
+            parts = [script.get('narration', ''), '']
+
+        for j, part_text in enumerate(parts[:2]):
+            if not part_text.strip():
+                continue
+
+            log_cb({"type":"log","message":f"[A2A] TTS {i+1}.{j+1}: {len(part_text)} chars"})
+            mp3_path, dur = ds_tts(part_text)
+
+            # Convert to WAV
+            wav_path = Path(mp3_path).with_suffix('.wav')
+            subprocess.run(['ffmpeg', '-y', '-i', mp3_path, '-ar', '44100', '-ac', '2', str(wav_path)], check=True, capture_output=True)
+
+            audio_wavs.append(str(wav_path))
+            durations.append(dur)
+            subtitle_texts.append(part_text)
+
+    # Step 5: Compose video
+    log_cb({"type":"status","status":"running","progress":0.9, "message":"[A2A] composing video"})
+    vid_path = base_vid / f"{_sanitize(arxiv_id)}_{_now_ts()}.mp4"
+
+    from src.video.video_composer import compose_video
+    compose_video([Path(p) for p in slide_paths], audio_wavs, durations, str(vid_path), log=lambda m: log_cb({"type":"log","message":str(m)}))
+
+    # Step 6: Subtitles
+    vtt_path = vid_path.with_suffix('.vtt')
+    _write_vtt(durations, subtitle_texts, vtt_path)
+
+    log_cb({"type":"log","message":f"[A2A] complete: {vid_path}"})
+
+    return {
+        'video': str(vid_path),
+        'subtitle': str(vtt_path),
+        'slides': slide_paths,
+        'pptx': None,
+        'meta': meta
+    }
+
+
 def _compose_video_ffmpeg(slides: list[Path], out_path: Path, per_sec: float = 3.0) -> bool:
     try:
         # create list file
@@ -521,8 +680,14 @@ async def create_job(req: JobCreate) -> Dict[str, str]:
                 elif req.mode == "complete":
                     opts = req.options or {}
                     maxp = int(req.max_papers or opts.get("max_papers") or 1)
-                    # Use web-optimized pipeline with structured logs and CJK slides
-                    return run_complete_for_web(max_papers=maxp, out_dir=OUTPUT_DIR, log_cb=logger)
+                    # Check if A2A mode requested
+                    use_a2a = opts.get("use_a2a", False) or opts.get("a2a", False)
+                    if use_a2a and a2a_available:
+                        logger({"type":"log","message":"[mode] using A2A multi-agent workflow"})
+                        return run_complete_a2a(max_papers=maxp, out_dir=OUTPUT_DIR, log_cb=logger)
+                    else:
+                        # Use web-optimized pipeline with structured logs and CJK slides
+                        return run_complete_for_web(max_papers=maxp, out_dir=OUTPUT_DIR, log_cb=logger)
                 elif req.mode == "single":
                     return process_single_paper(req.paper_id or "demo", log=logger)
                 elif req.mode == "slides":
