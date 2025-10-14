@@ -271,22 +271,41 @@ def run_complete_for_web(max_papers: int, out_dir: Path, log_cb):
         log_cb({"type":"log","message":f"[slides] rendering {i*2}/6"}); _write_text_slide(sc['title'], sc.get('bullets') or [], p2)
         slide_paths += [str(p1), str(p2)]
 
-    # Step 7: TTS
+    # Step 7: TTS（为每个章节拆成两段，避免两页读同一段）
     log_cb({"type":"log","message":"[tts] generating speech"})
     audio_wavs: list[str] = []
     durations: list[float] = []
     total_segments = len(slide_paths)
+    import re as _re
+    def _split_narr(n: str) -> tuple[str, str]:
+        if not n: return ("", "")
+        parts = [s.strip() for s in _re.split(r"[。.!?]", n) if s.strip()]
+        if len(parts) <= 1:
+            L = len(n)//2 or len(n)
+            return (n[:L], n[L:])
+        mid = max(1, len(parts)//2)
+        a = "".join(parts[:mid])
+        b = "".join(parts[mid:])
+        return (a.replace("\u0001", "").replace("\u001a", ""), b.replace("\u0001", "").replace("\u001a", ""))
+
     for idx, sc in enumerate(scripts, start=1):
-        mp3_path, dur = ds_tts(sc.get("narration") or "")
+        full = sc.get("narration") or ""
+        # 构造两段旁白，若过短则补充要点
+        a, b = _split_narr(full)
+        if len(a) < 60 and (sc.get("bullets") or []):
+            a = (a + " " + "".join([str(x) for x in sc.get("bullets", [])[:2]])).strip()
+        if len(b) < 60 and (sc.get("bullets") or []):
+            b = (b + " " + "".join([str(x) for x in sc.get("bullets", [])[2:5]])).strip()
+
+        mp3_1, dur1 = ds_tts(a or full)
+        mp3_2, dur2 = ds_tts(b or full)
         base_idx = (idx - 1) * 2
-        # generate two wavs for two slides per section
+        # convert mp3->wav mono 22.05k
         wav1 = str((Path("temp/audio") / f"seg_{base_idx+1:02d}.wav").resolve())
         wav2 = str((Path("temp/audio") / f"seg_{base_idx+2:02d}.wav").resolve())
-        # convert mp3->wav mono 22.05k
-        subprocess.run(["ffmpeg","-y","-i", mp3_path, "-ar","22050","-ac","1", wav1], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        # reuse same audio for second slide
-        subprocess.run(["ffmpeg","-y","-i", mp3_path, "-ar","22050","-ac","1", wav2], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        audio_wavs.extend([wav1, wav2]); durations.extend([dur, dur])
+        subprocess.run(["ffmpeg","-y","-i", mp3_1, "-ar","22050","-ac","1", wav1], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(["ffmpeg","-y","-i", mp3_2, "-ar","22050","-ac","1", wav2], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        audio_wavs.extend([wav1, wav2]); durations.extend([dur1, dur2])
         log_cb({"type":"log","message":f"[tts] synthesized segment {base_idx+1}/{total_segments}"})
         log_cb({"type":"log","message":f"[tts] synthesized segment {base_idx+2}/{total_segments}"})
 

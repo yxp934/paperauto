@@ -424,22 +424,66 @@ class LLMClient:
                 "narration": str(data.get("narration") or ""),
             }
         else:
-            # 回退：基于章节摘要生成简单脚本
+            # 回退：基于摘要与论文摘要构建更丰富的脚本，避免重复与过短
             logger.info(f"LLM脚本生成空响应，使用启发式脚本: {section_title}")
 
-            # 从摘要生成要点（按句子分割）
-            sentences = [s.strip() for s in re.split(r'[。.!?]', section_summary) if s.strip()]
-            bullets = sentences[:4] if sentences else [section_summary[:50] or "暂无内容"]
+            # 1) 生成要点：优先从章节摘要切句；不足则从论文摘要补齐；仍不足再用模板
+            sent = [s.strip() for s in re.split(r'[。.!?]', section_summary) if s.strip()]
+            abs_sent = [s.strip() for s in re.split(r'[。.!?]', paper_abstract) if s.strip()]
+            bullets: list[str] = []
+            for s in sent:
+                if len(bullets) >= 5: break
+                if len(s) >= 8 and s not in bullets:
+                    bullets.append(s)
+            for s in abs_sent:
+                if len(bullets) >= 5: break
+                if len(s) >= 8 and s not in bullets:
+                    bullets.append(s)
+            if len(bullets) < 3:
+                title_map = {
+                    'Introduction': ["研究背景与动机", "核心问题与意义", "主要贡献概览"],
+                    'Background':   ["相关工作与差异", "理论基础", "技术路线概览"],
+                    'Method':       ["总体框架与流程", "关键算法与模块", "复杂度与实现要点"],
+                    'Experiments':  ["数据集与设置", "指标与对比方法", "实验设置与关键结果"],
+                    'Results':      ["总体效果与提升", "细分场景表现", "消融与可视化分析"],
+                    'Conclusion':   ["结论与贡献", "局限与风险", "未来工作与应用前景"],
+                }
+                # 根据标题或关键词选择模板
+                chose = []
+                for k, v in title_map.items():
+                    if k.lower() in section_title.lower(): chose = v; break
+                if not chose:
+                    chose = ["问题与场景", "方法与实现", "实验与结论"]
+                for s in chose:
+                    if len(bullets) >= 5: break
+                    if s not in bullets: bullets.append(s)
 
-            # 生成简单旁白
-            narration = f"接下来我们介绍{section_title}部分。{section_summary[:200]}"
-            if len(narration) < 100:
-                narration += f"这一部分主要讨论{', '.join(section_keywords[:3])}等关键内容。"
+            # 2) 生成旁白：结合标题、章节摘要与论文摘要，目标 220~350 字
+            base_intro = f"本节我们围绕{section_title}展开。"
+            core = section_summary
+            if len(core) < 120 and paper_abstract:
+                core = (section_summary + " " + paper_abstract[:240]).strip()
+            # 去重与裁剪
+            core = re.sub(r"\s+", " ", core)
+            # 若仍偏短，基于要点进行扩展
+            if len(core) < 180 and bullets:
+                core += " " + "；".join([b[:30] for b in bullets[:4]])
+            narration = (base_intro + core)
+            if len(narration) < 220 and bullets:
+                narration += " " + "；".join([b[:36] for b in bullets[:5]])
+            if len(narration) < 260 and paper_abstract:
+                # 继续补充摘要句，确保旁白不短于 260 字
+                _abs_more = [s.strip() for s in re.split(r'[。.!?]', paper_abstract) if s.strip()]
+                if _abs_more:
+                    narration += " " + "；".join([s[:36] for s in _abs_more[:3]])
+            if len(narration) < 200 and section_keywords:
+                narration += f"。重点涵盖{', '.join(section_keywords[:3])}等。"
+            narration = narration[:420]
 
             script = {
                 "title": section_title,
                 "bullets": bullets[:5],
-                "narration": narration[:400],  # 限制最大长度
+                "narration": narration,
             }
 
         # 确保旁白至少有一定长度（避免过短）
