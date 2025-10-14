@@ -62,9 +62,22 @@ def generate_audio(text: str, output_dir: str = "temp/audio") -> Tuple[str, floa
             dashscope.api_key = api_key
 
         synthesizer = SpeechSynthesizer(model=model, voice=voice)
-        audio_bytes = synthesizer.call(text)
+        audio_bytes = None
+        last_err = None
+        for attempt in range(2):
+            try:
+                audio_bytes = synthesizer.call(text)
+                if audio_bytes:
+                    break
+            except Exception as e:
+                last_err = e
+                logger.warning(f"DashScope TTS 调用失败，重试中 (attempt {attempt+1}/2): {e}")
+                try:
+                    import time as _t; _t.sleep(2)
+                except Exception:
+                    pass
         if not audio_bytes:
-            raise Exception("DashScope TTS 返回空音频")
+            raise Exception(f"DashScope TTS 返回空音频或失败: {last_err}")
 
         with open(output_path, 'wb') as f:
             f.write(audio_bytes)

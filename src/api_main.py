@@ -21,8 +21,17 @@ except Exception:
     pass
 
 app = FastAPI(title="Video Generation Backend", version="0.4.0")
-# Real pipeline entry points (reconstructed)
-from src.main import run_demo_mode, run_complete_pipeline, process_single_paper, run_slides_only
+# Lazy import real pipeline entry points to avoid optional modules at import time
+run_demo_mode = None
+run_complete_pipeline = None
+process_single_paper = None
+run_slides_only = None
+try:
+    from src.main import run_demo_mode as _rd, run_complete_pipeline as _rc, process_single_paper as _sp, run_slides_only as _rs
+    run_demo_mode, run_complete_pipeline, process_single_paper, run_slides_only = _rd, _rc, _sp, _rs
+except Exception:
+    # optional; web mode uses run_complete_for_web
+    pass
 
 
 # CORS for local dev
@@ -92,23 +101,170 @@ async def _log(jid: str, message: str):
     if q:
         await q.put(message)
 
-def _write_text_slide(title: str, bullets: list[str], out: Path, size=(1920,1080)):
-    from PIL import Image, ImageDraw, ImageFont
-    img = Image.new('RGB', size, color=(242,242,242))
-    draw = ImageDraw.Draw(img)
+# ---- CJK font helpers to ensure Chinese rendering ----
+from PIL import Image, ImageDraw, ImageFont
+
+def _find_cjk_font_path() -> str:
+    candidates = []
+    env_path = os.getenv("CJK_FONT_PATH")
+    if env_path:
+        candidates.append(env_path)
+    candidates += [
+        # macOS
+        "/System/Library/Fonts/PingFang.ttc",
+        "/System/Library/Fonts/STHeiti Light.ttc",
+        "/System/Library/Fonts/STHeiti Medium.ttc",
+        "/System/Library/Fonts/Hiragino Sans GB W3.otf",
+        "/System/Library/Fonts/Hiragino Sans GB W6.otf",
+        # Linux
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSerifCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+        # Windows
+        "C:/Windows/Fonts/msyh.ttc",
+        "C:/Windows/Fonts/simsun.ttc",
+        "C:/Windows/Fonts/simhei.ttf",
+    ]
+    for p in candidates:
+        try:
+            if p and os.path.exists(p):
+                return p
+        except Exception:
+            continue
+    return ""
+
+def _load_font(size: int) -> ImageFont.FreeTypeFont:
+    fp = _find_cjk_font_path()
+    if fp:
+        try:
+            return ImageFont.truetype(fp, size)
+        except Exception:
+            pass
     try:
-        font_title = ImageFont.truetype('Arial Unicode.ttf', 64)
-        font_bullet = ImageFont.truetype('Arial Unicode.ttf', 40)
+        return ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size)
     except Exception:
-        font_title = ImageFont.load_default()
-        font_bullet = ImageFont.load_default()
-    draw.text((80, 80), title[:120], fill=(39,28,33), font=font_title)
-    y = 180
-    for b in bullets[:8]:
-        draw.text((120, y), f"• {b[:140]}", fill=(39,28,33), font=font_bullet)
-        y += 64
+        return ImageFont.load_default()
+
+def _write_text_slide(title: str, bullets: list[str], out: Path, size=(1920,1080)):
+    img = Image.new('RGB', size, color=(30,40,60))
+    draw = ImageDraw.Draw(img)
+    ft = _load_font(64)
+    fb = _load_font(40)
+    draw.text((80, 80), (title or "")[0:50], fill=(255,255,255), font=ft)
+    y = 200
+    for b in (bullets or [])[:8]:
+        draw.text((120, y), f"• {str(b)[0:70]}", fill=(220,220,220), font=fb)
+        y += 90
     out.parent.mkdir(parents=True, exist_ok=True)
     img.save(str(out), 'PNG', optimize=True)
+
+# --- Web-facing minimal pipeline for Generate page (structured logs) ---
+from typing import Tuple
+from src.papers.fetch_papers import get_daily_papers, get_recent_papers
+from src.utils.llm_client import LLMClient
+from src.video.tts_dashscope import generate_audio as ds_tts
+from src.video.video_composer import compose_video
+
+
+def _write_vtt(durations: list[float], out: Path):
+    def fmt(t: float) -> str:
+        h = int(t // 3600); m = int((t % 3600) // 60); s = int(t % 60)
+        return f"{h:02d}:{m:02d}:{s:02d}.000"
+    cur = 0.0
+    lines = ["WEBVTT", ""]
+    for i, d in enumerate(durations, start=1):
+        start = fmt(cur); end = fmt(cur + max(2.0, float(d)))
+        lines.append(f"{i}")
+        lines.append(f"{start} --> {end}")
+        lines.append(f"Segment {i}")
+        lines.append("")
+        cur += max(2.0, float(d))
+    out.write_text("\n".join(lines), encoding="utf-8")
+
+
+def run_complete_for_web(max_papers: int, out_dir: Path, log_cb):
+    base_slides = out_dir / "slides"; base_vid = out_dir / "videos"
+    base_slides.mkdir(parents=True, exist_ok=True); base_vid.mkdir(parents=True, exist_ok=True)
+
+    # Step 1: fetch papers (HF -> arXiv fallback)
+    log_cb({"type":"log","message":"fetching Hugging Face daily"})
+    papers = get_daily_papers(max_results=max_papers)
+    source = "huggingface daily" if papers else "arXiv (fallback)"
+    if not papers:
+        log_cb({"type":"log","message":"HF daily empty, fallback to arXiv"})
+        papers = get_recent_papers(max_results=max_papers)
+    log_cb({"type":"log","message":f"[papers] source: {source}"})
+
+    if not papers:
+        raise Exception("no papers fetched")
+
+    # Only process first for web acceptance
+    paper = papers[0]
+    arxiv_id = getattr(paper, 'id', None) or getattr(paper, 'arxiv_id', None) or "unknown"
+    log_cb({"type":"status","status":"running","progress":0.05, "message":f"[pipeline] complete: processing 1/1 {arxiv_id}"})
+    log_cb({"type":"log","message":f"[pipeline] complete: processing 1/1 {arxiv_id}"})
+    log_cb({"type":"paper","id": arxiv_id, "title": getattr(paper, 'title', ''), "authors": getattr(paper, 'authors', []), "url": f"https://arxiv.org/abs/{arxiv_id}"})
+
+    # Step 2-3: LLM analysis + scripts
+    log_cb({"type":"log","message":"[llm] analyzing paper"})
+    llm = LLMClient()
+    sections = llm.analyze_paper_structure({
+        "title": getattr(paper, 'title', ''),
+        "abstract": getattr(paper, 'description', '') or getattr(paper, 'abstract', ''),
+        "authors": getattr(paper, 'authors', []),
+        "arxiv_id": arxiv_id,
+    })
+    scripts = []
+    for s in sections[:3]:
+        scripts.append(llm.generate_section_script(s, {"title": getattr(paper, 'title', ''), "abstract": getattr(paper, 'description', '') or getattr(paper, 'abstract', '')}))
+    log_cb({"type":"log","message":"[llm] script generated"})
+
+    # Step 4-6: Render 6 slides using CJK font helper
+    slide_paths: list[str] = []
+    for i, sc in enumerate(scripts, start=1):
+        # two slides per section: title-only and bullet points
+        p1 = base_slides / f"{_sanitize(arxiv_id)}_{_now_ts()}_{i*2-1:02d}.png"
+        p2 = base_slides / f"{_sanitize(arxiv_id)}_{_now_ts()}_{i*2:02d}.png"
+        log_cb({"type":"log","message":f"[slides] rendering {i*2-1}/6"}); _write_text_slide(sc['title'], sc.get('bullets') or [], p1)
+        log_cb({"type":"log","message":f"[slides] rendering {i*2}/6"}); _write_text_slide(sc['title'], sc.get('bullets') or [], p2)
+        slide_paths += [str(p1), str(p2)]
+
+    # Step 7: TTS
+    log_cb({"type":"log","message":"[tts] generating speech"})
+    audio_wavs: list[str] = []
+    durations: list[float] = []
+    total_segments = len(slide_paths)
+    for idx, sc in enumerate(scripts, start=1):
+        mp3_path, dur = ds_tts(sc.get("narration") or "")
+        base_idx = (idx - 1) * 2
+        # generate two wavs for two slides per section
+        wav1 = str((Path("temp/audio") / f"seg_{base_idx+1:02d}.wav").resolve())
+        wav2 = str((Path("temp/audio") / f"seg_{base_idx+2:02d}.wav").resolve())
+        # convert mp3->wav mono 22.05k
+        subprocess.run(["ffmpeg","-y","-i", mp3_path, "-ar","22050","-ac","1", wav1], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # reuse same audio for second slide
+        subprocess.run(["ffmpeg","-y","-i", mp3_path, "-ar","22050","-ac","1", wav2], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        audio_wavs.extend([wav1, wav2]); durations.extend([dur, dur])
+        log_cb({"type":"log","message":f"[tts] synthesized segment {base_idx+1}/{total_segments}"})
+        log_cb({"type":"log","message":f"[tts] synthesized segment {base_idx+2}/{total_segments}"})
+
+    # Step 8: Compose video
+    vid_path = base_vid / f"{_sanitize(arxiv_id)}_{int(time.time())}.mp4"
+    log_cb({"type":"log","message":"[video] composing with audio narration"})
+    compose_video(slide_paths, audio_wavs, durations, str(vid_path), log=lambda m: log_cb({"type":"log","message":str(m)}))
+
+    # Subtitles (WEBVTT)
+    vtt_path = vid_path.with_suffix('.vtt')
+    _write_vtt(durations, vtt_path)
+
+    return {
+        'video': str(vid_path),
+        'subtitle': str(vtt_path),
+        'slides': slide_paths,
+        'pptx': None,
+    }
 
 def _compose_video_ffmpeg(slides: list[Path], out_path: Path, per_sec: float = 3.0) -> bool:
     try:
@@ -198,7 +354,8 @@ async def create_job(req: JobCreate) -> Dict[str, str]:
                 elif req.mode == "complete":
                     opts = req.options or {}
                     maxp = int(req.max_papers or opts.get("max_papers") or 1)
-                    return run_complete_pipeline(max_papers=maxp, log=logger)
+                    # Use web-optimized pipeline with structured logs and CJK slides
+                    return run_complete_for_web(max_papers=maxp, out_dir=OUTPUT_DIR, log_cb=logger)
                 elif req.mode == "single":
                     return process_single_paper(req.paper_id or "demo", log=logger)
                 elif req.mode == "slides":

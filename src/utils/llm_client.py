@@ -23,7 +23,12 @@ class LLMClient:
         self.generic_key = os.environ.get("LLM_API_KEY")
         self.generic_model = os.environ.get("LLM_MODEL")
         # Specific providers as fallback
-        self.gemini_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        # 优先顺序：GEMINI_API_KEY / GOOGLE_API_KEY / LLM_API_KEY（兼容现有 .env 配置）
+        self.gemini_key = (
+            os.environ.get("GEMINI_API_KEY")
+            or os.environ.get("GOOGLE_API_KEY")
+            or os.environ.get("LLM_API_KEY")
+        )
         self.gemini_model = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
         self.openai_key = os.environ.get("OPENAI_API_KEY")
         self.openai_model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
@@ -317,7 +322,7 @@ class LLMClient:
 
         # 如果LLM失败，使用标准6章节模板
         if not sections or len(sections) < 5:
-            logger.warning("LLM章节分析失败，使用标准模板")
+            logger.info("LLM章节分析空响应，使用标准模板")
             # 从摘要中提取关键词（简单分词）
             words = re.findall(r'\b[a-zA-Z]{4,}\b', abstract.lower())
             common_keywords = list(dict.fromkeys(words[:15]))  # 去重并取前15个
@@ -420,7 +425,7 @@ class LLMClient:
             }
         else:
             # 回退：基于章节摘要生成简单脚本
-            logger.warning(f"LLM脚本生成失败，使用回退策略: {section_title}")
+            logger.info(f"LLM脚本生成空响应，使用启发式脚本: {section_title}")
 
             # 从摘要生成要点（按句子分割）
             sentences = [s.strip() for s in re.split(r'[。.!?]', section_summary) if s.strip()]

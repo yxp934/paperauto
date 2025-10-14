@@ -121,6 +121,26 @@ export default function GeneratePage() {
     return () => t && clearInterval(t);
   }, [job?.id, job?.status, base, refreshLatest]);
 
+  // Fallback: poll logs REST to ensure log pane shows even if WS delayed
+  useEffect(() => {
+    if (!job?.id) return;
+    let stopped = false;
+    let t: any;
+    const poll = async () => {
+      try {
+        const r = await fetch(`${base}/api/jobs/${job.id}/logs?limit=200`, { cache: 'no-store' });
+        if (r.ok) {
+          const d = await r.json();
+          const text = (d.logs || []).join('\n');
+          setLogs(text ? text.split(/\n/) : []);
+        }
+      } catch {}
+      if (!stopped && (job.status === 'running' || job.status === 'queued')) t = setTimeout(poll, 1000);
+    };
+    poll();
+    return () => { stopped = true; if (t) clearTimeout(t); };
+  }, [job?.id, job?.status, base]);
+
   return (
     <main className="p-6 max-w-[1200px] mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -185,19 +205,17 @@ export default function GeneratePage() {
 
       {/* Logs + Recent Paper */}
       <section className="p-4 rounded-md border bg-card">
-        <div className="flex items-center justify-between">
-          <h2>Live Logs</h2>
-          {recentPaper?.title && (
-            <div className="ml-4 px-3 py-2 rounded border text-sm bg-input-background">
-              <div className="font-medium truncate max-w-[480px]" title={recentPaper.title}>{recentPaper.title}</div>
-              <div className="text-muted-foreground truncate max-w-[480px]">{recentPaper.id} {recentPaper.authors?.length ? `• ${recentPaper.authors.join(', ')}` : ''}</div>
-              {recentPaper.url && <a className="text-primary underline" href={recentPaper.url} target="_blank" rel="noreferrer">arXiv</a>}
-            </div>
-          )}
-        </div>
+        <h2>Live Logs</h2>
         <div className="mt-2 h-64 overflow-auto rounded bg-muted/30 p-2 text-sm font-mono whitespace-pre-wrap">
           {logs.length ? logs.join("\n") : "No logs yet."}
         </div>
+        {recentPaper?.title && (
+          <div className="mt-3 px-3 py-2 rounded border text-sm bg-input-background">
+            <div className="font-medium truncate max-w-[480px]" title={recentPaper.title}>{recentPaper.title}</div>
+            <div className="text-muted-foreground truncate max-w-[480px]">{recentPaper.id} {recentPaper.authors?.length ? `• ${recentPaper.authors.join(', ')}` : ''}</div>
+            {recentPaper.url && <a className="text-primary underline" href={recentPaper.url} target="_blank" rel="noreferrer">arXiv</a>}
+          </div>
+        )}
       </section>
 
       {/* Results */}
