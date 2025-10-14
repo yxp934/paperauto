@@ -81,7 +81,7 @@ class LLMClient:
         data = json.dumps(body).encode("utf-8")
         req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
         try:
-            with request.urlopen(req, timeout=60) as resp:
+            with request.urlopen(req, timeout=int(os.getenv('LLM_TIMEOUT', '15'))) as resp:
                 raw = resp.read().decode("utf-8", errors="ignore")
             obj = json.loads(raw)
             parts = []
@@ -114,7 +114,7 @@ class LLMClient:
         data = json.dumps(body).encode("utf-8")
         req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
         try:
-            with request.urlopen(req, timeout=60) as resp:
+            with request.urlopen(req, timeout=int(os.getenv('LLM_TIMEOUT', '15'))) as resp:
                 raw = resp.read().decode("utf-8", errors="ignore")
             obj = json.loads(raw)
             # Extract text from candidates
@@ -149,7 +149,7 @@ class LLMClient:
             method="POST",
         )
         try:
-            with request.urlopen(req, timeout=60) as resp:
+            with request.urlopen(req, timeout=int(os.getenv('LLM_TIMEOUT', '15'))) as resp:
                 raw = resp.read().decode("utf-8", errors="ignore")
             obj = json.loads(raw)
             choices = obj.get("choices") or []

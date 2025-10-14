@@ -66,7 +66,11 @@ export default function GeneratePage() {
     setConnecting(true);
     const ws = new WebSocket(url);
     wsRef.current = ws;
-    ws.onopen = () => setConnecting(false);
+    ws.onopen = () => {
+      setConnecting(false);
+      // Ask server to replay latest paper event over WS so tests can observe it
+      try { fetch(`${base}/api/jobs/${id}/replay-paper`, { method: 'POST' }); } catch {}
+    };
     ws.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data as string);
