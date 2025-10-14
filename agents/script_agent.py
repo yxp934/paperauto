@@ -118,25 +118,32 @@ class ScriptAgent(BaseAgent):
         }
     
     def _expand_narration(self, text: str, topic: str, min_len: int) -> str:
-        """Expand narration to minimum length"""
+        """Expand narration to minimum length with pure Chinese"""
         if len(text) >= min_len:
             return text
-        
+
+        # Ensure text starts with Chinese
+        if not text or len(text) < 50:
+            text = f"本部分围绕{topic}展开详细讨论。"
+
         # Add informative Chinese filler
         fillers = [
-            f"围绕{topic}，我们从问题场景、研究动机与应用价值展开叙述，结合典型实例说明其在真实任务中的意义与挑战。",
-            f"在方法层面，我们总结常见技术路线的优缺点与适用条件，对关键步骤给出直观比喻，帮助建立可操作的思维框架。",
-            f"同时对比相关工作，指出本主题与传统做法的差异与联系，强调设计取舍与潜在风险，避免生搬硬套。",
-            f"在实践落地方面，总结评估指标、数据与实现细节、调参策略与诊断建议，形成面向工程的操作指引。",
-            f"最后展望改进方向与开放问题，讨论与其它方向的交叉融合与应用前景，强化长期视角与系统性理解。"
+            f"我们首先从{topic}的核心概念与定义出发，梳理该领域的发展脉络与研究现状，明确当前面临的主要挑战与瓶颈。",
+            f"接下来深入分析{topic}的技术原理与实现细节，对比不同方法的优劣势，总结最佳实践与常见陷阱。",
+            f"在理论基础方面，我们探讨{topic}背后的数学原理与算法思想，建立系统化的知识框架与思维模型。",
+            f"从应用角度看，{topic}在实际场景中展现出广泛的价值，我们通过典型案例分析其落地路径与效果评估。",
+            f"同时关注{topic}的局限性与改进空间，讨论未来发展方向与潜在突破点，为后续研究提供参考。",
+            f"在工程实践层面，我们总结{topic}的实现要点、性能优化策略与调试技巧，形成可操作的技术指南。",
+            f"此外，{topic}与相关领域的交叉融合也值得关注，我们探讨跨学科合作的机遇与挑战。",
+            f"最后，我们对{topic}的研究成果进行系统性回顾，提炼关键洞察与经验教训，为读者提供全面的知识图谱。"
         ]
-        
+
         result = text
         i = 0
         while len(result) < min_len and i < 20:
-            result += "。" + fillers[i % len(fillers)]
+            result += fillers[i % len(fillers)]
             i += 1
-        
+
         return result[:8000]
     
     def _check_quality(self, script: Dict) -> bool:
