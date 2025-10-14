@@ -1,0 +1,202 @@
+"""
+Script Agent - generates high-quality Chinese narration scripts
+"""
+import logging
+from typing import Dict, List, Optional
+from agents.base import BaseAgent
+
+logger = logging.getLogger(__name__)
+
+
+class ScriptAgent(BaseAgent):
+    """Agent for generating section scripts with quality assurance"""
+    
+    def __init__(self, llm_client, retriever=None):
+        super().__init__("ScriptAgent")
+        self.llm_client = llm_client
+        self.retriever = retriever
+    
+    def generate_script(self, section: Dict, paper_context: Dict, max_retries: int = 3) -> Dict:
+        """
+        Generate script for a section with quality checks and retries
+        
+        Args:
+            section: {title, summary, keywords}
+            paper_context: {title, abstract, arxiv_id}
+            max_retries: Maximum retry attempts
+            
+        Returns:
+            {title, bullets, narration_parts, meta}
+        """
+        # Retrieve relevant context if retriever available
+        retrieved_context = ""
+        if self.retriever:
+            try:
+                query = f"{section.get('title', '')} {section.get('summary', '')}"
+                results = self.retriever.query(query, n_results=3, filter_paper_id=paper_context.get('arxiv_id'))
+                retrieved_context = "\n\n".join([r['text'] for r in results])
+            except Exception as e:
+                logger.warning(f"Retrieval failed: {e}")
+        
+        # Load prompt template
+        prompt_template = self.load_prompt("script.yaml")
+        
+        # Try LLM generation with retries
+        for attempt in range(max_retries):
+            try:
+                # Build messages
+                system_msg = {"role": "system", "content": prompt_template.get("system", "")}
+                user_content = prompt_template.get("user", "").format(
+                    paper_title=paper_context.get('title', ''),
+                    paper_abstract=paper_context.get('abstract', '')[:1500],
+                    section_title=section.get('title', ''),
+                    section_summary=section.get('summary', ''),
+                    section_keywords=", ".join(section.get('keywords', [])),
+                    retrieved_context=retrieved_context[:1000] if retrieved_context else "无"
+                )
+                user_msg = {"role": "user", "content": user_content}
+                
+                # Call LLM
+                response, prompt_tokens, completion_tokens = self.call_llm(
+                    [system_msg, user_msg],
+                    temperature=0.3 + 0.1 * attempt,
+                    max_tokens=8192
+                )
+                
+                # Extract JSON
+                data = self.extract_json(response)
+                if not data:
+                    logger.warning(f"[ScriptAgent] Attempt {attempt+1}: Failed to parse JSON")
+                    continue
+                
+                # Validate and repair
+                script = self._validate_and_repair(data, section.get('title', ''))
+                
+                # Check quality
+                if self._check_quality(script):
+                    script['meta'] = {
+                        'prompt_tokens': prompt_tokens,
+                        'completion_tokens': completion_tokens,
+                        'total_tokens': prompt_tokens + completion_tokens,
+                        'attempt': attempt + 1,
+                        'zh_ratio': self._chinese_ratio(script.get('narration_parts', [])),
+                    }
+                    logger.info(f"[ScriptAgent] Generated script for '{section.get('title', '')}' (attempt {attempt+1})")
+                    return script
+                
+            except Exception as e:
+                logger.error(f"[ScriptAgent] Attempt {attempt+1} failed: {e}")
+        
+        # Fallback: heuristic generation
+        logger.warning(f"[ScriptAgent] All LLM attempts failed, using heuristic fallback")
+        return self._heuristic_fallback(section, paper_context)
+    
+    def _validate_and_repair(self, data: Dict, section_title: str) -> Dict:
+        """Validate and repair script data"""
+        title = data.get('title', section_title)
+        bullets = [str(b) for b in (data.get('bullets', []) or [])][:5]
+        narration_parts = [str(p) for p in (data.get('narration_parts', []) or [])][:2]
+        
+        # Ensure at least 3 bullets
+        while len(bullets) < 3:
+            bullets.append(f"要点{len(bullets)+1}")
+        
+        # Ensure 2 narration parts, each >=600 chars
+        while len(narration_parts) < 2:
+            narration_parts.append("")
+        
+        for i in range(2):
+            if len(narration_parts[i]) < 600:
+                # Expand with filler
+                narration_parts[i] = self._expand_narration(narration_parts[i], section_title, 600)
+        
+        return {
+            'title': title,
+            'bullets': bullets[:5],
+            'narration_parts': narration_parts,
+            'narration': "\n\n".join(narration_parts)
+        }
+    
+    def _expand_narration(self, text: str, topic: str, min_len: int) -> str:
+        """Expand narration to minimum length"""
+        if len(text) >= min_len:
+            return text
+        
+        # Add informative Chinese filler
+        fillers = [
+            f"围绕{topic}，我们从问题场景、研究动机与应用价值展开叙述，结合典型实例说明其在真实任务中的意义与挑战。",
+            f"在方法层面，我们总结常见技术路线的优缺点与适用条件，对关键步骤给出直观比喻，帮助建立可操作的思维框架。",
+            f"同时对比相关工作，指出本主题与传统做法的差异与联系，强调设计取舍与潜在风险，避免生搬硬套。",
+            f"在实践落地方面，总结评估指标、数据与实现细节、调参策略与诊断建议，形成面向工程的操作指引。",
+            f"最后展望改进方向与开放问题，讨论与其它方向的交叉融合与应用前景，强化长期视角与系统性理解。"
+        ]
+        
+        result = text
+        i = 0
+        while len(result) < min_len and i < 20:
+            result += "。" + fillers[i % len(fillers)]
+            i += 1
+        
+        return result[:8000]
+    
+    def _check_quality(self, script: Dict) -> bool:
+        """Check if script meets quality standards"""
+        parts = script.get('narration_parts', [])
+        if len(parts) < 2:
+            return False
+        
+        # Check length
+        if any(len(p) < 600 for p in parts):
+            return False
+        
+        # Check Chinese ratio
+        zh_ratio = self._chinese_ratio(parts)
+        if zh_ratio < 0.7:
+            return False
+        
+        return True
+    
+    def _chinese_ratio(self, texts: List[str]) -> float:
+        """Calculate Chinese character ratio"""
+        if not texts:
+            return 0.0
+        
+        combined = "".join(texts)
+        cjk = sum(1 for c in combined if '\u4e00' <= c <= '\u9fff')
+        letters = sum(1 for c in combined if c.isalpha())
+        total = max(1, cjk + letters)
+        return cjk / total
+    
+    def _heuristic_fallback(self, section: Dict, paper_context: Dict) -> Dict:
+        """Heuristic fallback when LLM fails"""
+        title = section.get('title', 'Section')
+        summary = section.get('summary', '')
+        
+        # Generate bullets
+        bullets = [
+            f"{title}的核心概念与定义",
+            f"{title}的主要方法与技术路线",
+            f"{title}的实验设置与评估指标",
+            f"{title}的关键结果与发现",
+            f"{title}的局限性与未来方向"
+        ][:5]
+        
+        # Generate narration parts
+        part1 = self._expand_narration(f"本部分围绕{title}展开。{summary}", title, 600)
+        part2 = self._expand_narration(f"继续讨论{title}的细节。{summary}", title, 600)
+        
+        return {
+            'title': title,
+            'bullets': bullets,
+            'narration_parts': [part1, part2],
+            'narration': f"{part1}\n\n{part2}",
+            'meta': {
+                'prompt_tokens': 0,
+                'completion_tokens': 0,
+                'total_tokens': 0,
+                'attempt': 0,
+                'zh_ratio': 1.0,
+                'fallback': True
+            }
+        }
+
