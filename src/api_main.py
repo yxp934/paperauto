@@ -170,7 +170,7 @@ from src.video.tts_dashscope import generate_audio as ds_tts
 from src.video.video_composer import compose_video
 
 
-def _write_vtt(durations: list[float], out: Path):
+def _write_vtt(durations: list[float], texts: list[str], out: Path):
     def fmt(t: float) -> str:
         h = int(t // 3600); m = int((t % 3600) // 60); s = int(t % 60)
         return f"{h:02d}:{m:02d}:{s:02d}.000"
@@ -178,9 +178,16 @@ def _write_vtt(durations: list[float], out: Path):
     lines = ["WEBVTT", ""]
     for i, d in enumerate(durations, start=1):
         start = fmt(cur); end = fmt(cur + max(2.0, float(d)))
+        text = (texts[i-1] if i-1 < len(texts) else "").strip() or f"Segment {i}"
         lines.append(f"{i}")
         lines.append(f"{start} --> {end}")
-        lines.append(f"Segment {i}")
+        # Allow multi-line by splitting on '。' and keeping short lines for readability
+        parts = [p.strip() for p in text.replace('\r',' ').split('。') if p.strip()]
+        if not parts:
+            parts = [text]
+        for j, p in enumerate(parts):
+            if j < 3:
+                lines.append(p)
         lines.append("")
         cur += max(2.0, float(d))
     out.write_text("\n".join(lines), encoding="utf-8")
@@ -339,6 +346,7 @@ def run_complete_for_web(max_papers: int, out_dir: Path, log_cb):
     log_cb({"type":"log","message":"[tts] generating speech"})
     audio_wavs: list[str] = []
     durations: list[float] = []
+    subtitle_texts: list[str] = []
     total_segments = len(slide_paths)
     import re as _re
     def _split_narr(n: str) -> tuple[str, str]:
@@ -366,6 +374,8 @@ def run_complete_for_web(max_papers: int, out_dir: Path, log_cb):
         b = __re.sub(r"[\x00-\x1F\x7F]", " ", b)
         log_cb({"type":"log","message":f"[tts] input | idx={idx} | a_len={len(a)} | b_len={len(b)} | a_head={(a[:30])} | b_head={(b[:30])}"})
 
+        # record subtitle texts aligned with audio segments
+        subtitle_texts.extend([a or full, b or full])
 
         mp3_1, dur1 = ds_tts(a or full)
         mp3_2, dur2 = ds_tts(b or full)
@@ -387,7 +397,7 @@ def run_complete_for_web(max_papers: int, out_dir: Path, log_cb):
 
     # Subtitles (WEBVTT)
     vtt_path = vid_path.with_suffix('.vtt')
-    _write_vtt(durations, vtt_path)
+    _write_vtt(durations, subtitle_texts, vtt_path)
 
     return {
         'video': str(vid_path),
