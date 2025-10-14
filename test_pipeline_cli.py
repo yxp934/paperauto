@@ -25,33 +25,91 @@ from src.slide.plan import plan_slides_for_section, SlidePlan
 from src.video.tts_dashscope import generate_audio
 from src.video.video_composer import compose_video
 
-# 简化：使用 PIL 直接生成 Slide
+# 简化：使用 PIL 直接生成 Slide（确保中文字体可用）
 from PIL import Image, ImageDraw, ImageFont
 
 
+def _find_cjk_font_path() -> str:
+    """尽可能找到本机可用的中文字体路径；支持通过 CJK_FONT_PATH 覆盖"""
+    candidates = []
+    env_path = os.getenv("CJK_FONT_PATH")
+    if env_path:
+        candidates.append(env_path)
+
+    # macOS 常见中文字体
+    candidates += [
+        "/System/Library/Fonts/PingFang.ttc",
+        "/System/Library/Fonts/STHeiti Light.ttc",
+        "/System/Library/Fonts/STHeiti Medium.ttc",
+        "/System/Library/Fonts/Hiragino Sans GB W3.otf",
+        "/System/Library/Fonts/Hiragino Sans GB W6.otf",
+        "/Library/Fonts/Arial Unicode.ttf",
+    ]
+    # Linux 常见
+    candidates += [
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSerifCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+    ]
+    # Windows 常见
+    candidates += [
+        "C:/Windows/Fonts/msyh.ttc",   # 微软雅黑
+        "C:/Windows/Fonts/simsun.ttc", # 宋体
+        "C:/Windows/Fonts/simhei.ttf", # 黑体
+    ]
+
+    for p in candidates:
+        try:
+            if p and os.path.exists(p):
+                return p
+        except Exception:
+            continue
+    return ""  # 未找到则返回空串
+
+
+def _load_font(size: int, fallback_english: bool = True) -> ImageFont.FreeTypeFont:
+    """加载一个尽可能支持中英文字体；找不到则回退英文/默认字体"""
+    font_path = _find_cjk_font_path()
+    if font_path:
+        try:
+            return ImageFont.truetype(font_path, size)
+        except Exception:
+            pass
+    # 尝试英文通用字体（标题英文也能显示）
+    try:
+        return ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size)
+    except Exception:
+        return ImageFont.load_default()
 
 
 def _render_simple_slide(title: str, bullets: List[str]) -> Image.Image:
-    """使用 PIL 渲染简单的文本 Slide"""
+    """使用 PIL 渲染简单的文本 Slide（中文可显示）"""
     img = Image.new("RGB", (1920, 1080), color=(30, 40, 60))
     draw = ImageDraw.Draw(img)
 
-    try:
-        title_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 80)
-        text_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 50)
-    except:
-        title_font = ImageFont.load_default()
-        text_font = ImageFont.load_default()
+    title_font = _load_font(80)
+    text_font = _load_font(50)
 
-    # 绘制标题
-    draw.text((100, 100), title[:50], fill=(255, 255, 255), font=title_font)
+    # 绘制标题（保留足够长度，中文可用）
+    draw.text((100, 100), title[:40], fill=(255, 255, 255), font=title_font)
 
     # 绘制要点
     y = 300
     for bullet in bullets[:5]:
-        text = f"• {bullet[:80]}"
+        text = f"• {bullet[:50]}"  # 控制长度，避免超出
         draw.text((150, y), text, fill=(220, 220, 220), font=text_font)
         y += 120
+
+    # 在左下角打印所用字体（调试用，便于确认中文字体加载成功）
+    try:
+        font_path = _find_cjk_font_path()
+        if font_path:
+            info_font = _load_font(28)
+            draw.text((50, 1000), f"Font: {os.path.basename(font_path)}", fill=(180, 180, 180), font=info_font)
+    except Exception:
+        pass
 
     return img
 
