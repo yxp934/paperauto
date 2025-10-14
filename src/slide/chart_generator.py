@@ -8,11 +8,10 @@ from typing import Dict, List, Any, Optional, Union, Tuple
 import logging
 import io
 from PIL import Image
-import matplotlib as mpl
-mpl.use('Agg')  # Use non-GUI backend for server/threaded rendering
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
+import matplotlib as mpl
 from matplotlib import rcParams
 
 logger = logging.getLogger(__name__)
@@ -290,7 +289,7 @@ class ChartGenerator:
         # line/bar: series -> y_data/values
         if chart_type in ['line', 'bar'] and 'series' in prepared and 'y_data' not in prepared and 'values' not in prepared:
             series = prepared['series']
-            labels = [s.get('name', f'Series {i+1}') for i, s in enumerate(series)]
+            labels = [s.get('name', f'系列{i+1}') for i, s in enumerate(series)]
             series_values = [s.get('data', []) for s in series]
             if chart_type == 'line':
                 prepared['y_data'] = series_values
@@ -450,22 +449,16 @@ class ChartGenerator:
 
     def _add_legend(self, ax, data: Dict[str, Any]) -> None:
         """
-        添加图例（ASCII降级标签，避免字体缺失）
+        添加图例（使用当前 Matplotlib 字体配置渲染标签）
 
         Args:
             ax: matplotlib轴对象
             data: 数据字典
         """
         if 'labels' in data and data['labels']:
-            def _ascii(s: Any) -> str:
-                try:
-                    return str(s).encode('ascii', 'ignore').decode('ascii')
-                except Exception:
-                    return ''.join(ch for ch in str(s) if ord(ch) < 128)
-            labels = [_ascii(x) for x in data['labels']]
             try:
                 ax.legend(
-                    labels,
+                    data['labels'],
                     loc='best',
                     frameon=True,
                     fancybox=True,
@@ -587,11 +580,11 @@ class ChartGenerator:
 
             for i, value_group in enumerate(values):
                 ax.bar(x + i * width, value_group, width,
-                      label=data.get('labels', [f'Series {i+1}'])[i],
+                      label=data.get('labels', [f'系列{i+1}'])[i],
                       color=colors[i % len(colors)])
 
             ax.set_xticks(x + width * (len(values) - 1) / 2)
-            ax.set_xticklabels([str(c).encode('ascii','ignore').decode('ascii') for c in categories])
+            ax.set_xticklabels(categories)
             if data.get('labels'):
                 ax.legend()
         else:
@@ -614,7 +607,7 @@ class ChartGenerator:
             # 多条折线
             for i, y_group in enumerate(y_data):
                 ax.plot(x_data, y_group,
-                       label=data.get('labels', [f'Series {i+1}'])[i],
+                       label=data.get('labels', [f'系列{i+1}'])[i],
                        color=colors[i % len(colors)],
                        marker='o', linewidth=2)
 
@@ -636,8 +629,7 @@ class ChartGenerator:
         colors = data.get('colors', self.config['color_palette'])
         explode = data.get('explode', None)
 
-        labels_ascii = [str(l).encode('ascii','ignore').decode('ascii') for l in labels]
-        wedges, texts, autotexts = ax.pie(sizes, labels=labels_ascii, colors=colors[:len(labels)],
+        wedges, texts, autotexts = ax.pie(sizes, labels=labels, colors=colors[:len(labels)],
                                          autopct='%1.1f%%', startangle=90, explode=explode)
 
         # 美化文字
@@ -684,7 +676,7 @@ class ChartGenerator:
         """绘制雷达图"""
         categories = data.get('categories', [])
         values = data.get('values', [])
-        labels = data.get('labels', ['Series 1'])
+        labels = data.get('labels', ['系列1'])
 
         # 计算角度
         angles = np.linspace(0, 2 * np.pi, len(categories), endpoint=False).tolist()
@@ -702,7 +694,7 @@ class ChartGenerator:
 
         # 设置标签
         ax.set_xticks(angles[:-1])
-        ax.set_xticklabels([str(c).encode('ascii','ignore').decode('ascii') for c in categories])
+        ax.set_xticklabels(categories)
         ax.set_ylim(0, max(max(v) for v in values) * 1.1)
 
         if labels:
@@ -721,9 +713,9 @@ class ChartGenerator:
         if data.get('show_stats', False):
             mean_val = np.mean(values)
             std_val = np.std(values)
-            ax.axvline(mean_val, color='red', linestyle='--', linewidth=2, label=f'Mean: {mean_val:.2f}')
-            ax.axvline(mean_val + std_val, color='orange', linestyle='--', alpha=0.7, label=f'+1 SD: {mean_val + std_val:.2f}')
-            ax.axvline(mean_val - std_val, color='orange', linestyle='--', alpha=0.7, label=f'-1 SD: {mean_val - std_val:.2f}')
+            ax.axvline(mean_val, color='red', linestyle='--', linewidth=2, label=f'均值: {mean_val:.2f}')
+            ax.axvline(mean_val + std_val, color='orange', linestyle='--', alpha=0.7, label=f'+1σ: {mean_val + std_val:.2f}')
+            ax.axvline(mean_val - std_val, color='orange', linestyle='--', alpha=0.7, label=f'-1σ: {mean_val - std_val:.2f}')
             ax.legend()
 
     def _draw_box_plot(self, ax, data: Dict[str, Any]) -> None:
@@ -779,7 +771,7 @@ class ChartGenerator:
         return image
 
     def create_performance_comparison(self, models_or_data, metrics: Optional[List[str]] = None,
-                                   values: Optional[List[List[float]]] = None, title: str = "Model Performance",
+                                   values: Optional[List[List[float]]] = None, title: str = "模型性能对比",
                                    chart_type: str = 'bar') -> Image.Image:
         """
         创建专业性能对比图表
@@ -804,11 +796,11 @@ class ChartGenerator:
                 'values': values,
                 'labels': metrics,
                 'title': title,
-                'x_label': 'Models',
-                'y_label': 'Value'
+                'x_label': '模型',
+                'y_label': '数值'
             }
             result = self.generate_chart('bar', data)
-            return result['image'] if result['success'] else self._create_error_image("Failed to create performance chart", result['error'])
+            return result['image'] if result['success'] else self._create_error_image("性能对比图生成失败", result['error'])
 
         # 旧式参数路径
         models = models_or_data
@@ -818,8 +810,8 @@ class ChartGenerator:
                 'values': [[values[i][j] for i in range(len(models))] for j in range(len(metrics))],
                 'labels': models,
                 'title': title,
-                'x_label': 'Metric',
-                'y_label': 'Score'
+                'x_label': '评估指标',
+                'y_label': '性能分数'
             }
         elif chart_type == 'radar':
             data = {
@@ -834,15 +826,15 @@ class ChartGenerator:
                 'y_data': [[values[i][j] for j in range(len(metrics))] for i in range(len(models))],
                 'labels': models,
                 'title': title,
-                'x_label': 'Metric',
-                'y_label': 'Score'
+                'x_label': '评估指标',
+                'y_label': '性能分数'
             }
 
         result = self.generate_chart(chart_type, data)
         return result['image'] if result['success'] else self._create_error_image("性能对比图生成失败", result['error'])
 
     def create_trend_chart(self, x_data_or_data: Union[Dict[str, Any], List[Union[str, int, float]]],
-                         y_data: Optional[List[float]] = None, title: str = "Trend",
+                         y_data: Optional[List[float]] = None, title: str = "趋势分析",
                          show_points: bool = True) -> Image.Image:
         """
         创建专业趋势图
@@ -857,8 +849,8 @@ class ChartGenerator:
                 'x_data': d.get('dates', d.get('x_data', [])),
                 'y_data': d.get('values', d.get('y_data', [])),
                 'title': d.get('title', title),
-                'x_label': d.get('x_label', 'Time'),
-                'y_label': d.get('y_label', 'Value'),
+                'x_label': d.get('x_label', '时间'),
+                'y_label': d.get('y_label', '数值'),
                 'trend_line': d.get('trend_line', False)
             }
         else:
@@ -866,8 +858,8 @@ class ChartGenerator:
                 'x_data': x_data_or_data,
                 'y_data': y_data or [],
                 'title': title,
-                'x_label': 'Time/Condition',
-                'y_label': 'Value',
+                'x_label': '时间/条件',
+                'y_label': '数值',
                 'show_points': show_points,
                 'marker': 'o' if show_points else None
             }
@@ -875,7 +867,7 @@ class ChartGenerator:
         result = self.generate_chart('line', data)
         return result['image'] if result['success'] else self._create_error_image("趋势图生成失败", result['error'])
 
-    def create_distribution_chart(self, values: List[float], title: str = "Distribution",
+    def create_distribution_chart(self, values: List[float], title: str = "数据分布",
                                  bins: int = 30, show_stats: bool = True) -> Image.Image:
         """
         创建专业分布图
@@ -892,8 +884,8 @@ class ChartGenerator:
         data = {
             'values': values,
             'title': title,
-            'x_label': 'Range',
-            'y_label': 'Frequency',
+            'x_label': '数值区间',
+            'y_label': '频次',
             'bins': bins,
             'show_stats': show_stats
         }
@@ -903,10 +895,10 @@ class ChartGenerator:
         if result['success']:
             return result['image']
         else:
-            return self._create_error_image("Failed to create distribution chart", result['error'])
+            return self._create_error_image("分布图生成失败", result['error'])
 
     def create_correlation_chart(self, x_data: List[float], y_data: List[float],
-                                title: str = "Correlation", show_trend: bool = True) -> Image.Image:
+                                title: str = "相关性分析", show_trend: bool = True) -> Image.Image:
         """
         创建相关性散点图
 
@@ -923,8 +915,8 @@ class ChartGenerator:
             'x_data': x_data,
             'y_data': y_data,
             'title': title,
-            'x_label': 'X',
-            'y_label': 'Y',
+            'x_label': 'X变量',
+            'y_label': 'Y变量',
             'trend_line': show_trend,
             'alpha': 0.7
         }
@@ -934,10 +926,10 @@ class ChartGenerator:
         if result['success']:
             return result['image']
         else:
-            return self._create_error_image("Failed to create correlation chart", result['error'])
+            return self._create_error_image("相关性图生成失败", result['error'])
 
     def create_composition_chart(self, labels: List[str], sizes: List[float],
-                                title: str = "Composition", chart_type: str = 'pie') -> Image.Image:
+                                title: str = "构成分析", chart_type: str = 'pie') -> Image.Image:
         """
         创建构成图表
 
@@ -967,7 +959,7 @@ class ChartGenerator:
         if result['success']:
             return result['image']
         else:
-            return self._create_error_image("Failed to create composition chart", result['error'])
+            return self._create_error_image("构成图生成失败", result['error'])
 
     def create_ablation_study_chart(self, configs: List[str], performance: List[float],
                                   title: str = "消融实验结果") -> Image.Image:
@@ -1029,8 +1021,8 @@ class ChartGenerator:
             'values': [[model_data[model].get(metric, 0) for metric in metrics] for model in models],
             'labels': models,
             'title': title,
-            'x_label': 'Metric',
-            'y_label': 'Score'
+            'x_label': '评估指标',
+            'y_label': '性能分数'
         }
 
         result = self.generate_chart('bar', data)
@@ -1038,10 +1030,10 @@ class ChartGenerator:
         if result['success']:
             return result['image']
         else:
-            return self._create_error_image("Failed to create multi-metric chart", result['error'])
+            return self._create_error_image("多指标对比图生成失败", result['error'])
 
     def create_time_series_chart(self, timestamps: List[str], values: List[float],
-                                 title: str = "Time Series") -> Image.Image:
+                                 title: str = "时间序列分析") -> Image.Image:
         """
         创建时间序列图表
 
@@ -1057,8 +1049,8 @@ class ChartGenerator:
             'x_data': timestamps,
             'y_data': values,
             'title': title,
-            'x_label': 'Time',
-            'y_label': 'Value'
+            'x_label': '时间',
+            'y_label': '数值'
         }
 
         result = self.generate_chart('line', data)

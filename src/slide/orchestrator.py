@@ -374,25 +374,9 @@ class SlideOrchestrator:
                 result = self.slide_renderer.render_slide(
                     layout_type=template_name,
                     render_data=render_data,
-                    output_path=str(output_path),
-                    config={'fonts': {'english_only': True}}
+                    output_path=str(output_path)
                 )
                 final_path = result.output_path or str(output_path)
-
-                # Image QC (align with MultiAgentPPT per-page checker)
-                if bool((self.runtime_options or {}).get('enable_slide_qc')):
-                    try:
-                        from .image_qc import analyze_image
-                        qc = analyze_image(final_path)
-                        if not qc.ok:
-                            logger.warning(f"QC failed for page {page.page_number} (attempt {attempt+1}/{max_retries+1}): "
-                                           f"clarity={qc.clarity:.1f}, brightness={qc.brightness:.1f}, contrast={qc.contrast:.1f}, notes={qc.notes}")
-                            if attempt < max_retries:
-                                # Retry next loop iteration (can be extended to tweak render_data/theme)
-                                continue
-                    except Exception as _e:
-                        logger.warning(f"QC analysis error (ignored): {_e}")
-
                 self._cache_page(page, paper_ctx, final_path)
                 return final_path, True, None
             except Exception as e:  # pragma: no cover - robustness path

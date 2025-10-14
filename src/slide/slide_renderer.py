@@ -202,11 +202,6 @@ class SlideRenderer:
             # 合并配置
             render_config = {**self.config, **(config or {})}
 
-            # 文本按原文渲染（依赖 FontManager 选择可覆盖中文的字体），不再做 ASCII 降级
-            # 如需强制英文，可在CLI或配置层设置 fonts.english_only=true 再触发降级
-            if render_config.get('fonts', {}).get('english_only'):
-                render_data = self._sanitize_text_fields(render_data)
-
             # 准备资源
             assets = self._prepare_assets(render_data, render_config)
 
@@ -501,27 +496,9 @@ class SlideRenderer:
             return None
 
     def _apply_theme(self, slide: Image.Image, theme: Dict[str, Any]) -> Image.Image:
-        """
-
-        """
-        # TODO: 
+        """应用主题样式"""
+        # TODO: 实现主题应用逻辑
         return slide
-
-
-    def _sanitize_text_fields(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Optional: ASCII-only fallback when english_only=true is set in fonts config."""
-        def _to_ascii(s: str) -> str:
-            try:
-                return s.encode('ascii', 'ignore').decode('ascii')
-            except Exception:
-                return ''.join(ch for ch in str(s) if ord(ch) < 128)
-        sanitized = dict(data)
-        for key in ['title', 'subtitle', 'description', 'emphasis', 'caption']:
-            if key in sanitized and isinstance(sanitized[key], str):
-                sanitized[key] = _to_ascii(sanitized[key])
-        if isinstance(sanitized.get('bullets'), list):
-            sanitized['bullets'] = [_to_ascii(x) for x in sanitized['bullets']]
-        return sanitized
 
     def _generate_output_path(self, format: RenderFormat = RenderFormat.PNG) -> str:
         """生成输出路径"""

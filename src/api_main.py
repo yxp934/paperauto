@@ -13,6 +13,13 @@ import subprocess
 import os
 from datetime import datetime
 
+# Load .env early to ensure API keys present
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
 app = FastAPI(title="Video Generation Backend", version="0.4.0")
 # Real pipeline entry points (reconstructed)
 from src.main import run_demo_mode, run_complete_pipeline, process_single_paper, run_slides_only
