@@ -15,7 +15,7 @@ type JobStatus = {
 }
 
 export default function GeneratePage() {
-  const base = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000";
+  const base = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8001";
   const wsBase = useMemo(() => {
     const env = process.env.NEXT_PUBLIC_API_WS_BASE;
     if (env) return env;
@@ -23,7 +23,7 @@ export default function GeneratePage() {
       const u = new URL(base);
       u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
       return u.origin;
-    } catch { return "ws://127.0.0.1:8000"; }
+    } catch { return "ws://127.0.0.1:8001"; }
   }, [base]);
 
   const [mode, setMode] = useState<Mode>("demo");
