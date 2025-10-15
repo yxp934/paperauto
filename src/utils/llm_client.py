@@ -29,22 +29,36 @@ class LLMClient:
             or os.environ.get("GOOGLE_API_KEY")
             or os.environ.get("LLM_API_KEY")
         )
-        self.gemini_model = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+        self.gemini_model = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash-latest")
         self.openai_key = os.environ.get("OPENAI_API_KEY")
         self.openai_model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+        # HuggingFace Inference API (optional)
+        self.hf_key = os.environ.get("HUGGINGFACE_API_KEY")
+        self.hf_model = os.environ.get("HUGGINGFACE_MODEL", "google/gemma-2-2b-it")
 
     # --------------------------- Core chat ---------------------------
     def chat_completion(self, messages: List[Dict[str, str]], temperature: float = 0.3, max_tokens: int = 2048) -> str:
-        # 1) Generic env-configured endpoint (supports Gemini-compatible generateContent)
+        # Try providers in order; if one returns empty due to error, cascade to the next
         if self.generic_url and self.generic_key:
-            return self._chat_generic(messages, temperature, max_tokens)
-        # 2) Gemini explicit fallback
+            txt = self._chat_generic(messages, temperature, max_tokens)
+            if txt:
+                return txt
+            logger.warning("LLMClient: Generic endpoint returned empty, trying Gemini/OpenAI")
         if self.gemini_key:
-            return self._chat_gemini(messages, temperature, max_tokens)
-        # 3) OpenAI explicit fallback
+            txt = self._chat_gemini(messages, temperature, max_tokens)
+            if txt:
+                return txt
+            logger.warning("LLMClient: Gemini returned empty, trying OpenAI")
         if self.openai_key:
-            return self._chat_openai(messages, temperature, max_tokens)
-        logger.warning("LLMClient: No API key configured; falling back to heuristic content.")
+            txt = self._chat_openai(messages, temperature, max_tokens)
+            if txt:
+                return txt
+            logger.warning("LLMClient: OpenAI returned empty, trying HuggingFace Inference API")
+        if self.hf_key:
+            txt = self._chat_huggingface(messages, temperature, max_tokens)
+            if txt:
+                return txt
+        logger.error("LLMClient: All LLM providers failed or returned empty response")
         return ""
 
     def _chat_generic(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
@@ -190,6 +204,46 @@ class LLMClient:
             return ""
         except Exception as e:
             logger.error(f"LLM API调用异常 (OpenAI): {e}")
+            return ""
+
+    def _chat_huggingface(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
+        """Call HuggingFace Inference API for text generation."""
+        try:
+            # Build a simple prompt from messages
+            sys_txt = "\n".join(m.get("content", "") for m in messages if m.get("role") == "system").strip()
+            usr_txt = "\n\n".join(m.get("content", "") for m in messages if m.get("role") in {"user", "assistant"}).strip()
+            prompt = (sys_txt + "\n\n" + usr_txt).strip() if sys_txt else usr_txt
+            import json
+            from urllib import request as _rq
+            url = f"https://api-inference.huggingface.co/models/{self.hf_model}"
+            data = json.dumps({
+                "inputs": prompt,
+                "parameters": {"max_new_tokens": max_tokens, "temperature": temperature},
+                "options": {"wait_for_model": True}
+            }).encode("utf-8")
+            req = _rq.Request(url, data=data, headers={
+                "Authorization": f"Bearer {self.hf_key}",
+                "Content-Type": "application/json",
+            }, method="POST")
+            with _rq.urlopen(req, timeout=int(os.getenv('LLM_TIMEOUT', '60'))) as resp:
+                raw = resp.read().decode("utf-8", errors="ignore")
+            try:
+                obj = json.loads(raw)
+            except Exception:
+                obj = None
+            if isinstance(obj, list) and obj and isinstance(obj[0], dict) and obj[0].get('generated_text'):
+                text = str(obj[0]['generated_text']).strip()
+                logger.info(f"LLM调用成功（HuggingFace），返回 {len(text)} 字符")
+                return text
+            # some models return dict with 'generated_text'
+            if isinstance(obj, dict) and obj.get('generated_text'):
+                text = str(obj['generated_text']).strip()
+                logger.info(f"LLM调用成功（HuggingFace），返回 {len(text)} 字符")
+                return text
+            logger.error(f"LLM API调用失败 (HF) unexpected response: {raw[:300]}")
+            return ""
+        except Exception as e:
+            logger.error(f"LLM API调用异常 (HF): {e}")
             return ""
     # --------------------------- Quality Helpers ---------------------------
     @staticmethod

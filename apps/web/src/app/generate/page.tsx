@@ -1,5 +1,8 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import TokenStatsPanel from "@/components/TokenStatsPanel";
+import AgentStatusTimeline from "@/components/AgentStatusTimeline";
+import RegenerateButton from "@/components/RegenerateButton";
 
 type Mode = "demo" | "complete" | "single" | "slides";
 
@@ -35,6 +38,7 @@ export default function GeneratePage() {
   const [logs, setLogs] = useState<string[]>([]);
   const [connecting, setConnecting] = useState(false);
   const [recentPaper, setRecentPaper] = useState<{id?: string, title?: string, url?: string, authors?: string[]}>({});
+  const [tokenStats, setTokenStats] = useState<{ total?: number, cost?: number, by_agent?: Record<string, number> }>();
   const wsRef = useRef<WebSocket | null>(null);
 
   const toStatic = (p?: string | null) => {
@@ -86,6 +90,7 @@ export default function GeneratePage() {
         }
         if (msg?.type === "progress") setJob((j) => j ? { ...j, status: j.status || "running", progress: typeof msg.progress === 'number' ? msg.progress : j.progress, message: msg.message || msg.stage || j.message } : j);
         if (msg?.type === "paper") setRecentPaper({ id: msg.id, title: msg.title, url: msg.url, authors: msg.authors });
+        if (msg?.type === "token") setTokenStats({ total: msg.total, cost: msg.cost, by_agent: msg.by_agent });
       } catch {
         setLogs((prev) => [...prev, String(e.data)]);
       }
@@ -210,6 +215,7 @@ export default function GeneratePage() {
           <div className="w-full h-2 bg-muted/30 rounded">
             <div className="h-2 bg-primary rounded" style={{ width: `${Math.max(0, Math.min(100, (job?.progress||0)*100))}%` }} />
           </div>
+          <TokenStatsPanel stats={tokenStats} />
         </div>
       </section>
 
@@ -219,6 +225,7 @@ export default function GeneratePage() {
         <div className="mt-2 h-64 overflow-auto rounded bg-muted/30 p-2 text-sm font-mono whitespace-pre-wrap">
           {logs.length ? logs.join("\n") : "No logs yet."}
         </div>
+        <AgentStatusTimeline logs={logs} />
         {recentPaper?.title && (
           <div className="mt-3 px-3 py-2 rounded border text-sm bg-input-background">
             <div className="font-medium truncate max-w-[480px]" title={recentPaper.title}>{recentPaper.title}</div>
@@ -243,13 +250,17 @@ export default function GeneratePage() {
             {latest.video && <a className="px-3 py-1.5 rounded border" href={latest.video} download>Download Video</a>}
             {latest.subtitle && <a className="px-3 py-1.5 rounded border" href={latest.subtitle} download>Download Subtitles</a>}
             {latest.pptx && <a className="px-3 py-1.5 rounded border" href={latest.pptx} download>Download PPTX</a>}
+            <RegenerateButton jobId={job?.id} base={base} />
           </div>
         </div>
         <div className="p-4 rounded-md border bg-card">
           <h2>Slides</h2>
           <div className="grid grid-cols-2 gap-2 mt-2">
             {(latest.slides||[]).map(s => (
-              <img key={s} src={s} className="w-full rounded border" alt="slide" />
+              <div key={s} className="relative group">
+                <img src={s} className="w-full rounded border" alt="slide" />
+                <a href={s} download className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition px-2 py-1 text-xs bg-black/60 text-white rounded">Download</a>
+              </div>
             ))}
           </div>
         </div>
