@@ -29,6 +29,7 @@ export default function GeneratePage() {
   const [testMode, setTestMode] = useState<boolean>(true);
   const [exportPptx, setExportPptx] = useState<boolean>(true);
   const [uploadVideo, setUploadVideo] = useState<boolean>(false);
+  const [useA2A, setUseA2A] = useState<boolean>(false);
 
   const [job, setJob] = useState<JobStatus | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
@@ -48,7 +49,7 @@ export default function GeneratePage() {
     setJob(null);
     const body: any = { mode };
     if (mode === "single" || mode === "slides") body.paper_id = paperId || "2510.03215";
-    if (mode === "complete") body.options = { max_papers: maxPapers, test_mode: testMode, export_pptx: exportPptx, upload_video: uploadVideo };
+    if (mode === "complete") body.options = { max_papers: maxPapers, test_mode: testMode, export_pptx: exportPptx, upload_video: uploadVideo, use_a2a: useA2A };
     if (mode === "demo") body.options = { test_mode: testMode, export_pptx: exportPptx, upload_video: uploadVideo };
     if (mode === "single" || mode === "slides") body.options = { test_mode: testMode, export_pptx: exportPptx, upload_video: uploadVideo };
 
@@ -58,7 +59,7 @@ export default function GeneratePage() {
     const id = data.job_id || data.id || data?.job?.id || data?.id;
     setJob({ id, status: "queued", progress: 0 });
     setTimeout(() => connectWS(id), 50);
-  }, [mode, paperId, maxPapers, testMode, exportPptx, uploadVideo, base]);
+  }, [mode, paperId, maxPapers, testMode, exportPptx, uploadVideo, useA2A, base]);
 
   const connectWS = useCallback((id: string) => {
     try { wsRef.current?.close(); } catch {}
@@ -193,6 +194,11 @@ export default function GeneratePage() {
               <input id="upload_video" type="checkbox" checked={uploadVideo} onChange={e=>setUploadVideo(e.target.checked)} />
               <label htmlFor="upload_video">upload_video</label>
             </div>
+            <div className="flex items-center gap-2">
+              <input id="use_a2a" type="checkbox" checked={useA2A} onChange={e=>setUseA2A(e.target.checked)} />
+              <label htmlFor="use_a2a">使用 A2A</label>
+            </div>
+
           </div>
         </div>
 

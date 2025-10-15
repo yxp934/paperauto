@@ -81,7 +81,7 @@ class LLMClient:
         data = json.dumps(body).encode("utf-8")
         req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
         try:
-            with request.urlopen(req, timeout=int(os.getenv('LLM_TIMEOUT', '15'))) as resp:
+            with request.urlopen(req, timeout=int(os.getenv('LLM_TIMEOUT', '35'))) as resp:
                 raw = resp.read().decode("utf-8", errors="ignore")
             obj = json.loads(raw)
             parts = []
@@ -94,7 +94,16 @@ class LLMClient:
             logger.info(f"LLM调用成功（Generic/Gemini兼容），返回 {len(text)} 字符")
             return text
         except error.HTTPError as e:
-            logger.error(f"LLM API调用失败 (Generic): {e}")
+            body = ""
+            try:
+                body = e.read().decode("utf-8", errors="ignore")
+            except Exception:
+                pass
+            code = getattr(e, 'code', 'HTTPError')
+            logger.error(f"LLM API调用失败 (Generic) {code}: {body[:500]}")
+            return ""
+        except error.URLError as e:
+            logger.error(f"LLM API调用异常 (Generic) URL: {getattr(e, 'reason', e)}")
             return ""
         except Exception as e:
             logger.error(f"LLM API调用异常 (Generic): {e}")
@@ -114,7 +123,7 @@ class LLMClient:
         data = json.dumps(body).encode("utf-8")
         req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
         try:
-            with request.urlopen(req, timeout=int(os.getenv('LLM_TIMEOUT', '15'))) as resp:
+            with request.urlopen(req, timeout=int(os.getenv('LLM_TIMEOUT', '35'))) as resp:
                 raw = resp.read().decode("utf-8", errors="ignore")
             obj = json.loads(raw)
             # Extract text from candidates
@@ -128,7 +137,16 @@ class LLMClient:
             logger.info(f"LLM调用成功（Gemini），返回 {len(text)} 字符")
             return text
         except error.HTTPError as e:
-            logger.error(f"LLM API调用失败 (Gemini): {e}")
+            body = ""
+            try:
+                body = e.read().decode("utf-8", errors="ignore")
+            except Exception:
+                pass
+            code = getattr(e, 'code', 'HTTPError')
+            logger.error(f"LLM API调用失败 (Gemini) {code}: {body[:500]}")
+            return ""
+        except error.URLError as e:
+            logger.error(f"LLM API调用异常 (Gemini) URL: {getattr(e, 'reason', e)}")
             return ""
         except Exception as e:
             logger.error(f"LLM API调用异常 (Gemini): {e}")
@@ -149,7 +167,7 @@ class LLMClient:
             method="POST",
         )
         try:
-            with request.urlopen(req, timeout=int(os.getenv('LLM_TIMEOUT', '15'))) as resp:
+            with request.urlopen(req, timeout=int(os.getenv('LLM_TIMEOUT', '35'))) as resp:
                 raw = resp.read().decode("utf-8", errors="ignore")
             obj = json.loads(raw)
             choices = obj.get("choices") or []
@@ -159,7 +177,16 @@ class LLMClient:
                 return text
             return ""
         except error.HTTPError as e:
-            logger.error(f"LLM API调用失败 (OpenAI): {e}")
+            body = ""
+            try:
+                body = e.read().decode("utf-8", errors="ignore")
+            except Exception:
+                pass
+            code = getattr(e, 'code', 'HTTPError')
+            logger.error(f"LLM API调用失败 (OpenAI) {code}: {body[:500]}")
+            return ""
+        except error.URLError as e:
+            logger.error(f"LLM API调用异常 (OpenAI) URL: {getattr(e, 'reason', e)}")
             return ""
         except Exception as e:
             logger.error(f"LLM API调用异常 (OpenAI): {e}")
@@ -170,8 +197,8 @@ class LLMClient:
         if not text:
             return False
         cjk = sum(1 for ch in text if '\u4e00' <= ch <= '\u9fff')
-        letters = sum(1 for ch in text if ch.isalpha())
-        total = max(1, cjk + letters)
+        latin = sum(1 for ch in text if ('A' <= ch <= 'Z') or ('a' <= ch <= 'z'))
+        total = max(1, cjk + latin)
         return (cjk / total) >= threshold
 
     @staticmethod
@@ -223,15 +250,26 @@ class LLMClient:
             txt = self.chat_completion([sys, user], temperature=0.2, max_tokens=4096)
             if txt:
                 txt = self._dedup_sentences(txt)
-                if self._is_chinese_dominant(txt) and len(txt) >= min_len:
+                if self._is_chinese_dominant(txt, threshold=0.9) and len(txt) >= min_len:
                     return txt[:8000]
         except Exception:
             pass
         # Heuristic expansion as last resort (no LLM)
         base = f"本部分围绕{t}进行详细讲解，从研究动机、关键概念、典型方法、实践细节与潜在问题等角度展开，力求清晰、连贯且可操作。"
         # Remove mostly-ASCII lines
-        lines = [ln for ln in re.split(r"\n+", content) if sum(c.isascii() for c in ln) < max(1, int(len(ln)*0.6))]
-        more = ("。".join([ln.strip() for ln in lines if ln.strip()]))
+        # 更严格地过滤含英文的句子：仅保留 ASCII 占比 < 20% 的行
+        lines = []
+        for ln in re.split(r"\n+", content):
+            ln = ln.strip()
+            if not ln:
+                continue
+            asc = sum(1 for c in ln if c.isascii())
+            ratio = asc / max(1, len(ln))
+            if ratio < 0.2:
+                # 移除残留的纯英文/符号片段
+                ln = re.sub(r"[A-Za-z0-9_/.:;+\-]{3,}", " ", ln)
+                lines.append(ln)
+        more = ("。".join([ln for ln in lines if ln.strip()]))
         if len(more) < min_len//2:
             more += "。" + "这一部分还将解释关键术语的直观含义、为何必要、与相关工作的差别、以及在真实任务中的使用注意事项。"
         if len(more) < min_len*0.9:
@@ -249,18 +287,10 @@ class LLMClient:
         while len(out) < min_len and _i < 50:
             out += "。" + filler_paras[_i % len(filler_paras)]
             _i += 1
+        # Remove long Latin sequences to enforce Chinese purity
+        out = re.sub(r"[A-Za-z]{2,}", "", out)
         return out[:8000]
 
-        # pad to min_len with informative Chinese templates if still short
-        filler_paras = [
-            f""
-        ]
-        i = 0
-        while len(out) < min_len and i < 20:
-            out += ""  # placeholder to force length (will be removed below)
-            i += 1
-        out = out.replace('\u007f','')
-        return out[:8000]
 
     def _validate_and_repair_parts(self, parts: List[str], topic: str, min_len: int = 600) -> List[str]:
         fixed: List[str] = []
@@ -268,24 +298,28 @@ class LLMClient:
             p = (p or "").strip()
             p = re.sub(r"[\x00-\x1F\x7F]", " ", p)
             p = self._dedup_sentences(p)
-            if not self._is_chinese_dominant(p) or len(p) < min_len:
+            if not self._is_chinese_dominant(p, threshold=0.9) or len(p) < min_len:
                 p = self._expand_to_chinese(p, topic, min_len=min_len)
             fixed.append(p)
         # Ensure distinctness between parts (reduce overlap)
         if len(fixed) == 2 and fixed[0] and fixed[1]:
             # if overlap too high, ask LLM to diversify the second part
-            overlap = len(set(fixed[0].split("。")) & set(fixed[1].split("。")))
-            if overlap > 2:
-                try:
-                    sys = {"role":"system","content":"请改写为纯中文，避免与第一段重复，保持主题一致。"}
-                    user = {"role":"user","content":(
-                        f"主题：{topic}\n第一段：\n{fixed[0][:1800]}\n第二段（需改写避免重复，保持≥{min_len}字）：\n{fixed[1][:2200]}"
-                    )}
-                    txt = self.chat_completion([sys, user], temperature=0.2, max_tokens=4096)
-                    if txt and self._is_chinese_dominant(txt) and len(txt) >= min_len:
-                        fixed[1] = self._dedup_sentences(txt)[:8000]
-                except Exception:
-                    pass
+            s1 = [s for s in fixed[0].split("。") if s.strip()]
+            s2 = [s for s in fixed[1].split("。") if s.strip()]
+            if s1 and s2:
+                overlap_cnt = len(set(s1) & set(s2))
+                overlap_ratio = overlap_cnt / max(1, min(len(s1), len(s2)))
+                if overlap_ratio > 0.1:
+                    try:
+                        sys = {"role":"system","content":"请改写为纯中文，避免与第一段重复，保持主题一致。"}
+                        user = {"role":"user","content":(
+                            f"主题：{topic}\n第一段：\n{fixed[0][:1800]}\n第二段（需改写避免重复，保持≥{min_len}字）：\n{fixed[1][:2200]}"
+                        )}
+                        txt = self.chat_completion([sys, user], temperature=0.2, max_tokens=4096)
+                        if txt and self._is_chinese_dominant(txt, threshold=0.9) and len(txt) >= min_len:
+                            fixed[1] = self._dedup_sentences(txt)[:8000]
+                    except Exception:
+                        pass
         return fixed
 
 
@@ -557,7 +591,7 @@ class LLMClient:
                 parts = [str(x) for x in (data.get("narration_parts") or [])][:2]
                 parts = self._validate_and_repair_parts(parts, section_title, min_len=600)
                 bullets = [str(b) for b in (data.get("bullets") or [])][:5]
-                if all(len(p) >= 600 for p in parts) and self._is_chinese_dominant("".join(parts)):
+                if all(len(p) >= 600 for p in parts) and self._is_chinese_dominant("".join(parts), threshold=0.9):
                     script = {
                         "title": str(data.get("title") or section_title),
                         "bullets": bullets,

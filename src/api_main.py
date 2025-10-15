@@ -517,6 +517,20 @@ def run_complete_a2a(max_papers: int, out_dir: Path, log_cb):
     meta = result['meta']
 
     log_cb({"type":"log","message":f"[A2A] workflow complete: {len(scripts)} scripts, {meta['total_tokens']} tokens, ${meta['total_cost']:.4f}"})
+    # Emit structured token stats for frontend panel
+    try:
+        log_cb({
+            "type": "token",
+            "total": int(meta.get('total_tokens', 0)),
+            "cost": float(meta.get('total_cost', 0.0)),
+            "by_agent": {
+                "orchestrator": int(meta.get('orchestrator_tokens', 0)),
+                "script_agent": int(meta.get('script_agent_tokens', 0)),
+                "slide_agent": int(meta.get('slide_agent_tokens', 0)),
+            }
+        })
+    except Exception:
+        pass
 
     # Step 3: Render slides with images
     log_cb({"type":"status","status":"running","progress":0.5, "message":"[A2A] rendering slides"})
@@ -679,9 +693,11 @@ async def create_job(req: JobCreate) -> Dict[str, str]:
                     return run_demo_mode(log=logger)
                 elif req.mode == "complete":
                     opts = req.options or {}
+                    logger({"type":"log","message":f"[mode] raw options = {opts}"})
                     maxp = int(req.max_papers or opts.get("max_papers") or 1)
                     # Check if A2A mode requested
                     use_a2a = opts.get("use_a2a", False) or opts.get("a2a", False)
+                    logger({"type":"log","message":f"[mode] opts.use_a2a={opts.get('use_a2a')} a2a_available={a2a_available}"})
                     if use_a2a and a2a_available:
                         logger({"type":"log","message":"[mode] using A2A multi-agent workflow"})
                         return run_complete_a2a(max_papers=maxp, out_dir=OUTPUT_DIR, log_cb=logger)
@@ -740,6 +756,8 @@ async def get_job(job_id: str):
     job = jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="not_found")
+
+
     return job.model_dump()
 
 @app.post("/api/jobs/{job_id}/replay-paper")
@@ -774,6 +792,9 @@ async def outputs_latest():
 async def job_ws(websocket: WebSocket, job_id: str):
     await websocket.accept()
     queue = log_queues.get(job_id)
+
+
+
     try:
         import json
         for line in job_logs.get(job_id, []):
@@ -800,3 +821,17 @@ async def job_ws(websocket: WebSocket, job_id: str):
                 await websocket.send_text(json.dumps({"type":"log","message": str(msg)}))
     except WebSocketDisconnect:
         pass
+
+
+@app.post("/api/jobs/{job_id}/regenerate")
+async def regenerate_job(job_id: str, scope: Optional[str] = None, index: Optional[int] = None) -> Dict[str, str]:
+    """
+    Regenerate content for a given job by starting a new job run.
+    For now, this will start a new 'complete' job with A2A enabled.
+    Returns the new job_id so the frontend can follow logs.
+    Optional query params:
+    - scope: e.g. 'script' | 'slide' | 'all' (reserved)
+    - index: section/slide index (1-based)
+    """
+    req = JobCreate(mode="complete", options={"use_a2a": True})
+    return await create_job(req)
