@@ -230,10 +230,22 @@ class LLMClient:
                 try:
                     client = genai.Client(api_key=api_key)
                     self._log("info", f"[LLM] Gemini SDK request attempt {attempt+1}/4 model={model}")
+                    schema = {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "bullets": {"type": "array", "items": {"type": "string"}, "minItems": 3, "maxItems": 5},
+                            "narration_parts": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}
+                        },
+                        "required": ["title", "bullets", "narration_parts"]
+                    }
                     resp = client.models.generate_content(
                         model=model,
                         contents=contents,
-                        config={"response_mime_type": "application/json"}
+                        config={
+                            "response_mime_type": "application/json",
+                            "response_schema": schema
+                        }
                     )
                     text = (getattr(resp, 'text', '') or '').strip()
                     if text:
@@ -255,10 +267,20 @@ class LLMClient:
         for attempt in range(4):
             try:
                 self._log("info", f"[LLM] Gemini REST request attempt {attempt+1}/4 model={model}")
+                schema = {
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string"},
+                        "bullets": {"type": "array", "items": {"type": "string"}, "minItems": 3, "maxItems": 5},
+                        "narration_parts": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}
+                    },
+                    "required": ["title", "bullets", "narration_parts"]
+                }
                 body = {
                     "contents": [{"role": "user", "parts": [{"text": contents}]}],
                     "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
-                    "response_mime_type": "application/json"
+                    "response_mime_type": "application/json",
+                    "response_schema": schema
                 }
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
                 data = json.dumps(body).encode("utf-8")
