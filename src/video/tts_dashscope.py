@@ -111,14 +111,24 @@ def generate_audio(text: str, output_dir: str = "temp/audio") -> Tuple[str, floa
         error_msg = str(e)
         logger.error(f"DashScope TTS 生成失败: {error_msg}")
 
-        # Check if error is due to account issues (Arrearage)
-        if "Arrearage" in error_msg or "Access denied" in error_msg or "account" in error_msg.lower():
-            logger.warning(f"DashScope 账户问题，尝试使用本地 TTS 回退...")
+        # Check if error is due to account issues or connection problems
+        error_lower = error_msg.lower()
+        should_fallback = (
+            "arrearage" in error_lower or
+            "access denied" in error_lower or
+            "account" in error_lower or
+            "socket" in error_lower or
+            "connection" in error_lower or
+            "返回空音频" in error_msg
+        )
+
+        if should_fallback:
+            logger.warning(f"DashScope TTS 不可用（{error_msg[:100]}），尝试使用本地 TTS 回退...")
             try:
                 return _generate_audio_local_fallback(text, output_dir)
             except Exception as fallback_err:
                 logger.error(f"本地 TTS 回退也失败: {fallback_err}")
-                raise Exception(f"DashScope TTS 失败（账户问题）且本地 TTS 回退失败: {error_msg}")
+                raise Exception(f"DashScope TTS 失败且本地 TTS 回退失败: {error_msg}")
 
         raise
 
