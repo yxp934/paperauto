@@ -46,9 +46,10 @@ class ImageGenerator:
         if os.getenv("IMAGE_API_URL") and os.getenv("IMAGE_API_KEY") and os.getenv("IMAGE_MODEL"):
             providers.append(self._generate_with_modelscope)
 
-        # Fallback: use placeholder (will be considered failure by tests)
-        providers.append(self._generate_placeholder)
+        # 禁止使用占位图作为回退；如果所有真实提供方均失败，则抛出异常
+        # providers.append(self._generate_placeholder)
 
+        last_err = None
         for provider in providers:
             try:
                 image_path = provider(prompt, slide_id, style)
@@ -56,9 +57,10 @@ class ImageGenerator:
                     logger.info(f"Generated image: {image_path}")
                     return image_path
             except Exception as e:
+                last_err = e
                 logger.warning(f"Image generation failed with {provider.__name__}: {e}")
 
-        return None
+        raise RuntimeError(f"All image providers failed for slide {slide_id}: {last_err}")
 
     def _generate_with_dashscope(self, prompt: str, slide_id: str, style: str) -> Optional[str]:
         """Generate image using DashScope (Alibaba Cloud)"""

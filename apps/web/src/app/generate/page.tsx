@@ -51,6 +51,7 @@ export default function GeneratePage() {
   const startJob = useCallback(async () => {
     setLogs([]);
     setJob(null);
+    setTokenStats(undefined);
     const body: any = { mode };
     if (mode === "single" || mode === "slides") body.paper_id = paperId || "2510.03215";
     if (mode === "complete") body.options = { max_papers: maxPapers, test_mode: testMode, export_pptx: exportPptx, upload_video: uploadVideo, use_a2a: useA2A };
