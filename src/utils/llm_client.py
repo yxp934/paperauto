@@ -36,9 +36,71 @@ class LLMClient:
         self.hf_key = os.environ.get("HUGGINGFACE_API_KEY")
         self.hf_model = os.environ.get("HUGGINGFACE_MODEL", "Qwen/Qwen2.5-7B-Instruct")
 
+
+    def __init__(self, log_callback: Optional[callable] = None) -> None:
+        # Optional job log callback to stream live logs to frontend
+        self.log_callback = log_callback
+        # Generic env-driven endpoint (preferred)
+        self.generic_url = os.environ.get("LLM_API_URL")
+        self.generic_key = os.environ.get("LLM_API_KEY")
+        self.generic_model = os.environ.get("LLM_MODEL")
+        # Specific providers as fallback
+        # 优先顺序：GEMINI_API_KEY / GOOGLE_API_KEY / LLM_API_KEY（兼容现有 .env 配置）
+        self.gemini_key = (
+            os.environ.get("GEMINI_API_KEY")
+            or os.environ.get("GOOGLE_API_KEY")
+            or os.environ.get("LLM_API_KEY")
+        )
+        self.gemini_model = os.environ.get("GEMINI_MODEL") or os.environ.get("LLM_MODEL") or "gemini-2.5-flash"
+        self.openai_key = os.environ.get("OPENAI_API_KEY")
+        self.openai_model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+        # HuggingFace Inference API (optional)
+        self.hf_key = os.environ.get("HUGGINGFACE_API_KEY")
+        self.hf_model = os.environ.get("HUGGINGFACE_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+
+    def _emit_job_log(self, level: str, message: str) -> None:
+        try:
+            if self.log_callback:
+                # Live Logs expects dict events
+                self.log_callback({"type": "log", "level": level, "message": message})
+        except Exception:
+            pass
+
+    def _log(self, level: str, message: str) -> None:
+        # Mirror to python logger and job log stream
+        try:
+            if level == "info":
+                logger.info(message)
+            elif level == "warning":
+                logger.warning(message)
+            elif level == "error":
+                logger.error(message)
+            else:
+                logger.info(message)
+        except Exception:
+            pass
+        self._emit_job_log(level, message)
+
     # --------------------------- Core chat ---------------------------
     def chat_completion(self, messages: List[Dict[str, str]], temperature: float = 0.3, max_tokens: int = 2048) -> str:
         # Try providers in order; if one returns empty due to error, cascade to the next
+        # Log provider availability and order (no secrets exposed)
+        try:
+            providers = {
+                "generic": bool(self.generic_url and self.generic_key),
+                "gemini": bool(self.gemini_key),
+                "openai": bool(self.openai_key),
+                "hf": bool(self.hf_key),
+            }
+            self._log(
+                "info",
+                f"[LLM] provider order: generic({providers['generic']}), gemini({providers['gemini']}), "
+                f"openai({providers['openai']}), hf({providers['hf']}); temp={temperature}, max_tokens={max_tokens}; "
+                f"models: gemini={self.gemini_model}, openai={self.openai_model}, hf={self.hf_model}"
+            )
+        except Exception:
+            pass
+
         if self.generic_url and self.generic_key:
             txt = self._chat_generic(messages, temperature, max_tokens)
             if txt:
@@ -76,6 +138,7 @@ class LLMClient:
             "response_mime_type": "application/json",
         }
         # Prefer model from env if provided and URL is a template without model
+
         import urllib.parse as _up
         url = self.generic_url or ""
         # Do not override model if URL already includes full path
@@ -92,6 +155,8 @@ class LLMClient:
             _headers.setdefault("x-goog-api-key", self.generic_key)
         req = request.Request(url, data=data, headers=_headers, method="POST")
         for attempt in range(4):
+            self._log("info", f"[LLM] Generic request attempt {attempt+1}/4 url={url[:80]} model={self.generic_model}")
+
             try:
                 with request.urlopen(req) as resp:
                     raw = resp.read().decode("utf-8", errors="ignore")
@@ -164,6 +229,7 @@ class LLMClient:
             for attempt in range(4):
                 try:
                     client = genai.Client(api_key=api_key)
+                    self._log("info", f"[LLM] Gemini SDK request attempt {attempt+1}/4 model={model}")
                     resp = client.models.generate_content(
                         model=model,
                         contents=contents,
@@ -188,6 +254,7 @@ class LLMClient:
         # REST path with retries (do not override model in URL)
         for attempt in range(4):
             try:
+                self._log("info", f"[LLM] Gemini REST request attempt {attempt+1}/4 model={model}")
                 body = {
                     "contents": [{"role": "user", "parts": [{"text": contents}]}],
                     "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
@@ -264,6 +331,8 @@ class LLMClient:
             method="POST",
         )
         for attempt in range(4):
+            self._log("info", f"[LLM] OpenAI Chat request attempt {attempt+1}/4 model={self.openai_model}")
+
             try:
                 with request.urlopen(req) as resp:
                     raw = resp.read().decode("utf-8", errors="ignore")
@@ -316,6 +385,8 @@ class LLMClient:
     def _chat_huggingface(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
         """Call HuggingFace Inference API for text generation."""
         for attempt in range(4):
+            self._log("info", f"[LLM] HF Inference request attempt {attempt+1}/4 model={self.hf_model}")
+
             try:
                 # Build a simple prompt from messages
                 sys_txt = "\n".join(m.get("content", "") for m in messages if m.get("role") == "system").strip()

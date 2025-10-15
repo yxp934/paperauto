@@ -506,7 +506,7 @@ def run_complete_a2a(max_papers: int, out_dir: Path, log_cb):
 
     # Step 2: Run A2A workflow
     log_cb({"type":"log","message":"[A2A] initializing workflow"})
-    llm = LLMClient()
+    llm = LLMClient(log_callback=log_cb)
     workflow = A2AWorkflow(llm, log_callback=log_cb)
 
     log_cb({"type":"status","status":"running","progress":0.1, "message":"[A2A] running multi-agent workflow"})
