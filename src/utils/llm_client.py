@@ -73,6 +73,7 @@ class LLMClient:
         body = {
             "contents": [{"role": "user", "parts": [{"text": usr_txt}]}],
             "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
+            "response_mime_type": "application/json",
         }
         # Prefer model from env if provided and URL is a template without model
         import urllib.parse as _up
