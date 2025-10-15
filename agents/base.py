@@ -47,22 +47,29 @@ class BaseAgent:
         
         # Call LLM
         response = self.llm_client.chat_completion(messages, temperature, max_tokens)
-        
+        if not response:
+            logger.error(f"[{self.name}] LLM returned empty text")
+        else:
+            try:
+                logger.info(f"[{self.name}] Raw LLM response (first 400): {response[:400]}")
+            except Exception:
+                pass
+
         # Count completion tokens
         completion_tokens = self.token_counter.count_text(response)
-        
+
         # Update totals
         total = prompt_tokens + completion_tokens
         self.total_tokens += total
-        
+
         # Estimate cost (rough estimate, adjust based on actual model)
         cost = self._estimate_cost(prompt_tokens, completion_tokens)
         self.total_cost += cost
-        
+
         logger.info(f"[{self.name}] LLM call: {prompt_tokens} prompt + {completion_tokens} completion = {total} tokens (${cost:.4f})")
-        
+
         return response, prompt_tokens, completion_tokens
-    
+
     def _estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
         """
         Estimate cost based on token counts
