@@ -126,6 +126,12 @@ export default function GeneratePage() {
           if (["succeeded","failed","cancelled"].includes(d.status)) {
             clearInterval(t); await refreshLatest();
           }
+        } else if (r.status === 404) {
+          // Backend restart or job expired; reset UI so user can start a new run
+          clearInterval(t);
+          setJob(null);
+          setLogs([]);
+          try { wsRef.current?.close(); } catch {}
         }
       }, 2000);
     }
@@ -144,6 +150,11 @@ export default function GeneratePage() {
           const d = await r.json();
           const text = (d.logs || []).join('\n');
           setLogs(text ? text.split(/\n/) : []);
+        } else if (r.status === 404) {
+          stopped = true;
+          setJob(null);
+          setLogs([]);
+          return;
         }
       } catch {}
       if (!stopped && (job.status === 'running' || job.status === 'queued')) t = setTimeout(poll, 1000);
