@@ -96,20 +96,41 @@ class BaseAgent:
         
         # Try to find JSON in markdown code block
         import re
+        # Strip BOM and code fences
+        cleaned = text.lstrip("\ufeff").strip()
+        cleaned = re.sub(r"^```(?:json)?\s*\n", "", cleaned, flags=re.IGNORECASE|re.MULTILINE)
+        cleaned = re.sub(r"\n```\s*$", "", cleaned, flags=re.MULTILINE)
+        # First attempt: direct on cleaned
+        try:
+            return json.loads(cleaned)
+        except Exception:
+            pass
+        # Patterns
         patterns = [
             r'```json\s*(\{.*?\})\s*```',
             r'```\s*(\{.*?\})\s*```',
             r'(\{.*?\})',
         ]
-        
         for pattern in patterns:
-            match = re.search(pattern, text, re.DOTALL)
+            match = re.search(pattern, cleaned, re.DOTALL)
             if match:
+                frag = match.group(1)
                 try:
-                    return json.loads(match.group(1))
+                    return json.loads(frag)
                 except Exception:
                     continue
-        
+        # Last resort: bracket matching to get the largest JSON object
+        start = cleaned.find('{')
+        end = cleaned.rfind('}')
+        if start != -1 and end != -1 and end > start:
+            candidate = cleaned[start:end+1]
+            # Attempt to fix common trailing commas
+            candidate = re.sub(r',\s*([}\]])', r'\1', candidate)
+            try:
+                return json.loads(candidate)
+            except Exception:
+                pass
+
         logger.warning(f"[{self.name}] Failed to extract JSON from response")
         return None
 
