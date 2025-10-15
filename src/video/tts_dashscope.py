@@ -108,7 +108,18 @@ def generate_audio(text: str, output_dir: str = "temp/audio") -> Tuple[str, floa
         return output_path, duration
 
     except Exception as e:
-        logger.error(f"DashScope TTS 生成失败: {e}")
+        error_msg = str(e)
+        logger.error(f"DashScope TTS 生成失败: {error_msg}")
+
+        # Check if error is due to account issues (Arrearage)
+        if "Arrearage" in error_msg or "Access denied" in error_msg or "account" in error_msg.lower():
+            logger.warning(f"DashScope 账户问题，尝试使用本地 TTS 回退...")
+            try:
+                return _generate_audio_local_fallback(text, output_dir)
+            except Exception as fallback_err:
+                logger.error(f"本地 TTS 回退也失败: {fallback_err}")
+                raise Exception(f"DashScope TTS 失败（账户问题）且本地 TTS 回退失败: {error_msg}")
+
         raise
 
 
@@ -233,4 +244,68 @@ class DashScopeTTSGenerator:
             raise Exception("没有有效的旁白文本可生成 TTS")
 
         return self.synthesize_segments(texts, log=log)
+
+
+def _generate_audio_local_fallback(text: str, output_dir: str = "temp/audio") -> Tuple[str, float]:
+    """
+    本地 TTS 回退方案（使用 macOS say 命令）
+
+    Args:
+        text: 要转换的文本
+        output_dir: 输出目录
+
+    Returns:
+        Tuple[str, float]: (音频文件路径, 时长秒数)
+    """
+    import platform
+    import wave
+
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    # 检查是否为 macOS
+    if platform.system() != "Darwin":
+        raise Exception("本地 TTS 回退仅支持 macOS 系统")
+
+    # 生成临时 AIFF 文件
+    aiff_path = os.path.join(output_dir, f"tts_local_{random.randint(10_000, 99_999)}.aiff")
+    mp3_path = Path(aiff_path).with_suffix('.mp3')
+
+    logger.info(f"使用本地 TTS (say) 生成音频: {text[:50]}... ({len(text)}字)")
+
+    try:
+        # 使用 macOS say 命令生成 AIFF 音频
+        # -v Ting-Ting 是中文女声
+        subprocess.run(
+            ['say', '-v', 'Ting-Ting', '-o', aiff_path, text],
+            check=True,
+            capture_output=True,
+            timeout=60
+        )
+
+        # 转换 AIFF 到 MP3
+        subprocess.run(
+            ['ffmpeg', '-y', '-i', aiff_path, '-ar', '44100', '-ac', '2', '-b:a', '128k', str(mp3_path)],
+            check=True,
+            capture_output=True,
+            timeout=60
+        )
+
+        # 删除临时 AIFF 文件
+        try:
+            os.remove(aiff_path)
+        except Exception:
+            pass
+
+        # 获取音频时长
+        duration = _get_audio_duration(str(mp3_path))
+        logger.info(f"本地 TTS 音频生成成功: {mp3_path} ({duration:.2f}秒)")
+
+        return str(mp3_path), duration
+
+    except subprocess.TimeoutExpired:
+        raise Exception("本地 TTS 生成超时")
+    except subprocess.CalledProcessError as e:
+        raise Exception(f"本地 TTS 命令执行失败: {e.stderr.decode() if e.stderr else str(e)}")
+    except Exception as e:
+        raise Exception(f"本地 TTS 生成失败: {e}")
 
