@@ -88,13 +88,14 @@ class QAAgent:
         return passed, issues
     
     def _chinese_ratio(self, text: str) -> float:
-        """Calculate Chinese character ratio"""
+        """Calculate Chinese character ratio (CJK vs ASCII letters only)"""
         if not text:
             return 0.0
-        
+
         cjk = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
-        letters = sum(1 for c in text if c.isalpha())
-        total = max(1, cjk + letters)
+        # Only count ASCII letters (A-Z, a-z), not all unicode letters
+        letters_ascii = sum(1 for c in text if ('A' <= c <= 'Z') or ('a' <= c <= 'z'))
+        total = max(1, cjk + letters_ascii)
         return cjk / total
     
     def _check_repetition(self, scripts: List[Dict]) -> float:
