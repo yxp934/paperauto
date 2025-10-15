@@ -101,16 +101,17 @@ class LLMClient:
         except Exception:
             pass
 
-        if self.generic_url and self.generic_key:
-            txt = self._chat_generic(messages, temperature, max_tokens)
-            if txt:
-                return txt
-            logger.warning("LLMClient: Generic endpoint returned empty, trying Gemini/OpenAI")
+        # Prefer Gemini first to honor response_schema and JSON-only guidance
         if self.gemini_key:
             txt = self._chat_gemini(messages, temperature, max_tokens)
             if txt:
                 return txt
-            logger.warning("LLMClient: Gemini returned empty, trying OpenAI")
+            logger.warning("LLMClient: Gemini returned empty, trying Generic endpoint")
+        if self.generic_url and self.generic_key:
+            txt = self._chat_generic(messages, temperature, max_tokens)
+            if txt:
+                return txt
+            logger.warning("LLMClient: Generic endpoint returned empty, trying OpenAI")
         if self.openai_key:
             txt = self._chat_openai(messages, temperature, max_tokens)
             if txt:
