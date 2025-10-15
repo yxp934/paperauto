@@ -108,6 +108,51 @@ class ScriptAgent(BaseAgent):
                     logger.info(f"[ScriptAgent] Generated script for '{section.get('title', '')}' (attempt {attempt+1})")
                     return script
 
+                # Quality not sufficient: perform one strict re-generation within this attempt
+                parts = script.get('narration_parts', []) or []
+                lengths = [len(p) for p in parts]
+                zh_ratio = self._chinese_ratio(parts)
+                reasons = []
+                if any(l < 600 for l in lengths):
+                    reasons.append(f"lengths<{600}")
+                if zh_ratio < 0.90:
+                    reasons.append(f"zh_ratio<{0.90}")
+                if not reasons:
+                    reasons.append("style/template")
+                logger.warning(f"[ScriptAgent] Attempt {attempt+1}: Quality check failed ({', '.join(reasons)}); issuing strict quality re-generation")
+
+                quality_sys = (
+                    "你是一名中文科普视频的资深撰稿人。严格按照以下质量要求重新生成完整 JSON（含 title, bullets, narration_parts）:"
+                    "1) narration_parts 必须两段且每段≥600字; 2) 仅使用中文，中文占比≥0.9，严禁英文字母; "
+                    "3) 严禁套话/模板化表达，必须结合给定上下文写出具体技术细节、实验设置/数据与关键结果; "
+                    "4) bullets 3-5条，覆盖不同要点; 5) 严禁 Markdown 代码块与任何解释性文字; 6) 仅输出 JSON，对象且以 { 开始、以 } 结束。"
+                )
+                quality_user = (
+                    user_content
+                    + "\n\n请给出最终满足质量要求的 JSON。若上次失败原因: " + ",".join(reasons)
+                )
+                try:
+                    resp_q, _, _ = self.call_llm([
+                        {"role": "system", "content": quality_sys},
+                        {"role": "user", "content": quality_user}
+                    ], temperature=0.2, max_tokens=8192)
+                    data_q = self.extract_json(resp_q) or {}
+                    script_q = self._validate_and_repair(data_q, section.get('title', ''))
+                    script_q = self._post_process(script_q, section, paper_context)
+                    if self._check_quality(script_q):
+                        script_q['meta'] = {
+                            'prompt_tokens': prompt_tokens,
+                            'completion_tokens': completion_tokens,
+                            'total_tokens': prompt_tokens + completion_tokens,
+                            'attempt': attempt + 1,
+                            'zh_ratio': self._chinese_ratio(script_q.get('narration_parts', [])),
+                            'quality_retry': True,
+                        }
+                        logger.info(f"[ScriptAgent] Generated script (quality-retry) for '{section.get('title', '')}' (attempt {attempt+1})")
+                        return script_q
+                except Exception as e:
+                    logger.warning(f"[ScriptAgent] strict quality re-generation failed: {e}")
+
             except Exception as e:
                 logger.error(f"[ScriptAgent] Attempt {attempt+1} failed: {e}")
 
