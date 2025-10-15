@@ -64,7 +64,8 @@ def generate_audio(text: str, output_dir: str = "temp/audio") -> Tuple[str, floa
         synthesizer = SpeechSynthesizer(model=model, voice=voice)
         audio_bytes = None
         last_err = None
-        for attempt in range(3):
+        max_attempts = 6
+        for attempt in range(max_attempts):
             try:
                 audio_bytes = synthesizer.call(text)
                 if audio_bytes:
@@ -72,15 +73,16 @@ def generate_audio(text: str, output_dir: str = "temp/audio") -> Tuple[str, floa
             except Exception as e:
                 last_err = e
                 msg = str(e)
-                logger.warning(f"DashScope TTS 调用失败，重试中 (attempt {attempt+1}/3): {msg}")
-                # 特别处理：SDK 报错 "task has already started" 时，重新实例化并延迟
-                if "already started" in msg.lower() or "already_started" in msg.lower():
+                logger.warning(f"DashScope TTS 调用失败，重试中 (attempt {attempt+1}/{max_attempts}): {msg}")
+                # 特别处理：SDK 报错 "task has already started" 或类似并发冲突时，重新实例化并加长退避
+                lower = msg.lower()
+                if ("already started" in lower) or ("already_started" in lower) or ("too many requests" in lower) or ("429" in lower):
                     try:
                         synthesizer = SpeechSynthesizer(model=model, voice=voice)
                     except Exception:
                         pass
                 try:
-                    import time as _t; _t.sleep(2 + attempt)
+                    import time as _t; _t.sleep(3 + attempt * 2)
                 except Exception:
                     pass
         if not audio_bytes:

@@ -87,10 +87,13 @@ class ScriptAgent(BaseAgent):
             except Exception as e:
                 logger.error(f"[ScriptAgent] Attempt {attempt+1} failed: {e}")
         
-        # Fallback: heuristic generation
-        logger.warning(f"[ScriptAgent] All LLM attempts failed, using heuristic fallback")
+        # No heuristic fallback when real providers are configured
+        import os
+        if os.getenv("LLM_API_KEY") or os.getenv("GEMINI_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("HUGGINGFACE_API_KEY"):
+            raise RuntimeError("LLM providers configured but script generation failed; heuristic fallback is forbidden")
+        logger.warning(f"[ScriptAgent] All LLM attempts failed, using heuristic fallback (no providers configured)")
         return self._heuristic_fallback(section, paper_context)
-    
+
     def _validate_and_repair(self, data: Dict, section_title: str) -> Dict:
         """Validate and repair script data"""
         title = data.get('title', section_title)
