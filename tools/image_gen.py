@@ -70,26 +70,33 @@ class ImageGenerator:
 
             dashscope.api_key = self.dashscope_key
 
-            # Enhance prompt with style
             enhanced_prompt = self._enhance_prompt(prompt, style)
-
-            # Call API
-            response = ImageSynthesis.call(
-                model='wanx-v1',
-                prompt=enhanced_prompt,
-                n=1,
-                size='1024*1024'
-            )
-
-            if response.status_code == 200 and response.output and response.output.results:
-                image_url = response.output.results[0].url
-
-                # Download image
-                image_path = self.output_dir / f"{slide_id}_dashscope.png"
-                self._download_image(image_url, image_path)
-
-                return str(image_path)
-
+            last_err = None
+            for attempt in range(4):
+                try:
+                    response = ImageSynthesis.call(
+                        model='wanx-v1',
+                        prompt=enhanced_prompt,
+                        n=1,
+                        size='1024*1024'
+                    )
+                    if response.status_code == 200 and response.output and response.output.results:
+                        image_url = response.output.results[0].url
+                        image_path = self.output_dir / f"{slide_id}_dashscope.png"
+                        self._download_image(image_url, image_path)
+                        return str(image_path)
+                    raise RuntimeError(f"DashScope unexpected response: {getattr(response, 'status_code', '?')}")
+                except Exception as e:
+                    last_err = e
+                    msg = str(e)
+                    # Retry on network/5xx/empty
+                    if attempt < 3:
+                        wait_seconds = 2 ** (attempt + 1)
+                        logger.warning(f"[ImageGen] DashScope API call failed (attempt {attempt+1}/4): {msg[:200]}, retrying in {wait_seconds}s...")
+                        time.sleep(wait_seconds)
+                    else:
+                        logger.error(f"DashScope image generation failed (final): {msg}")
+                        break
         except Exception as e:
             logger.error(f"DashScope image generation failed: {e}")
 
@@ -101,17 +108,29 @@ class ImageGenerator:
             from openai import OpenAI
             client = OpenAI(api_key=self.openai_key)
             enhanced_prompt = self._enhance_prompt(prompt, style)
-            response = client.images.generate(
-                model=os.getenv("OPENAI_IMAGE_MODEL", "dall-e-3"),
-                prompt=enhanced_prompt,
-                size=os.getenv("OPENAI_IMAGE_SIZE", "1024x1024"),
-                quality="standard",
-                n=1,
-            )
-            image_url = response.data[0].url
-            image_path = self.output_dir / f"{slide_id}_dalle.png"
-            self._download_image(image_url, image_path)
-            return str(image_path)
+            last_err = None
+            for attempt in range(4):
+                try:
+                    response = client.images.generate(
+                        model=os.getenv("OPENAI_IMAGE_MODEL", "dall-e-3"),
+                        prompt=enhanced_prompt,
+                        size=os.getenv("OPENAI_IMAGE_SIZE", "1024x1024"),
+                        quality="standard",
+                        n=1,
+                    )
+                    image_url = response.data[0].url
+                    image_path = self.output_dir / f"{slide_id}_dalle.png"
+                    self._download_image(image_url, image_path)
+                    return str(image_path)
+                except Exception as e:
+                    last_err = e
+                    if attempt < 3:
+                        wait_seconds = 2 ** (attempt + 1)
+                        logger.warning(f"[ImageGen] DALL-E API call failed (attempt {attempt+1}/4): {str(e)[:200]}, retrying in {wait_seconds}s...")
+                        time.sleep(wait_seconds)
+                    else:
+                        logger.error(f"DALL-E image generation failed (final): {e}")
+                        break
         except Exception as e:
             logger.error(f"DALL-E image generation failed: {e}")
         return None
@@ -119,38 +138,78 @@ class ImageGenerator:
     def _generate_with_openai_rest(self, prompt: str, slide_id: str, style: str) -> Optional[str]:
         """Generate image using OpenAI Images API via REST to avoid SDK dependency."""
         try:
-            import json, urllib.request
+            import json, urllib.request, urllib.error
             enhanced_prompt = self._enhance_prompt(prompt, style)
             base = os.getenv("OPENAI_BASE_URL", "https://api.openai.com").rstrip('/')
-            req = urllib.request.Request(
-                url=f"{base}/v1/images/generations",
-                data=json.dumps({
-                    "model": os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1"),
-                    "prompt": enhanced_prompt,
-                    "size": os.getenv("OPENAI_IMAGE_SIZE", "1024x1024"),
-                    "n": 1
-                }).encode("utf-8"),
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.openai_key}",
-                },
-                method="POST",
-            )
-            with urllib.request.urlopen(req) as resp:
-                obj = json.loads(resp.read().decode("utf-8", errors="ignore"))
-            data = obj.get("data") or []
-            if isinstance(data, list) and data:
-                if data[0].get("url"):
-                    image_url = data[0]["url"]
-                    image_path = self.output_dir / f"{slide_id}_openai.png"
-                    self._download_image(image_url, image_path)
-                    return str(image_path)
-                if data[0].get("b64_json"):
-                    import base64
-                    image_path = self.output_dir / f"{slide_id}_openai.png"
-                    with open(image_path, 'wb') as f:
-                        f.write(base64.b64decode(data[0]["b64_json"]))
-                    return str(image_path)
+            last_err = None
+            for attempt in range(4):
+                try:
+                    req = urllib.request.Request(
+                        url=f"{base}/v1/images/generations",
+                        data=json.dumps({
+                            "model": os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1"),
+                            "prompt": enhanced_prompt,
+                            "size": os.getenv("OPENAI_IMAGE_SIZE", "1024x1024"),
+                            "n": 1
+                        }).encode("utf-8"),
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {self.openai_key}",
+                        },
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req) as resp:
+                        obj = json.loads(resp.read().decode("utf-8", errors="ignore"))
+                    data = obj.get("data") or []
+                    if isinstance(data, list) and data:
+                        if data[0].get("url"):
+                            image_url = data[0]["url"]
+                            image_path = self.output_dir / f"{slide_id}_openai.png"
+                            self._download_image(image_url, image_path)
+                            return str(image_path)
+                        if data[0].get("b64_json"):
+                            import base64
+                            image_path = self.output_dir / f"{slide_id}_openai.png"
+                            with open(image_path, 'wb') as f:
+                                f.write(base64.b64decode(data[0]["b64_json"]))
+                            return str(image_path)
+                    raise RuntimeError("OpenAI Images REST returned empty data")
+                except urllib.error.HTTPError as e:
+                    code = getattr(e, 'code', 0)
+                    body = ""
+                    try:
+                        body = e.read().decode("utf-8", errors="ignore")
+                    except Exception:
+                        pass
+                    if code in (400, 401, 403, 404):
+                        logger.error(f"OpenAI Images REST failed {code}: {body[:300]}")
+                        return None
+                    if attempt < 3:
+                        wait_seconds = 2 ** (attempt + 1)
+                        logger.warning(f"[ImageGen] OpenAI Images REST call failed (attempt {attempt+1}/4): HTTP {code} {body[:160]}, retrying in {wait_seconds}s...")
+                        time.sleep(wait_seconds)
+                    else:
+                        last_err = e
+                        logger.error(f"OpenAI REST image generation failed (final {code}): {body[:300]}")
+                        break
+                except urllib.error.URLError as e:
+                    last_err = e
+                    if attempt < 3:
+                        wait_seconds = 2 ** (attempt + 1)
+                        logger.warning(f"[ImageGen] OpenAI Images REST call failed (attempt {attempt+1}/4): {str(e)[:200]}, retrying in {wait_seconds}s...")
+                        time.sleep(wait_seconds)
+                    else:
+                        logger.error(f"OpenAI REST image generation failed (final): {e}")
+                        break
+                except Exception as e:
+                    last_err = e
+                    if attempt < 3:
+                        wait_seconds = 2 ** (attempt + 1)
+                        logger.warning(f"[ImageGen] OpenAI Images REST call failed (attempt {attempt+1}/4): {str(e)[:200]}, retrying in {wait_seconds}s...")
+                        time.sleep(wait_seconds)
+                    else:
+                        logger.error(f"OpenAI REST image generation failed (final): {e}")
+                        break
         except Exception as e:
             logger.error(f"OpenAI REST image generation failed: {e}")
         return None
@@ -165,54 +224,68 @@ class ImageGenerator:
             if not (api_url and api_key and model):
                 return None
             enhanced_prompt = self._enhance_prompt(prompt, style)
-            # Derive base for task polling
             base_url = api_url.split("/v1/")[0].rstrip('/') + '/'
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "X-ModelScope-Async-Mode": "true",
-            }
-            submit = requests.post(
-                api_url,
-                headers=headers,
-                data=json.dumps({
-                    "model": model,
-                    "prompt": enhanced_prompt
-                }, ensure_ascii=False).encode('utf-8')
-            )
-            submit.raise_for_status()
-            task_id = submit.json().get("task_id")
-            if not task_id:
-                raise RuntimeError(f"ModelScope submit missing task_id: {submit.text[:200]}")
-            # Poll task
-            poll_headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "X-ModelScope-Task-Type": "image_generation",
-            }
-            image_url = None
-            for _ in range(18):  # up to ~90s without explicit timeout
-                r = requests.get(f"{base_url}v1/tasks/{task_id}", headers=poll_headers)
-                r.raise_for_status()
-                data = r.json()
-                status = data.get("task_status")
-                if status == "SUCCEED":
-                    outs = data.get("output_images") or []
-                    if outs:
-                        image_url = outs[0]
-                    break
-                if status == "FAILED":
-                    raise RuntimeError(f"ModelScope task failed: {data}")
-                time.sleep(5)
-            if not image_url:
-                raise RuntimeError("ModelScope task did not succeed in time")
-            # Download image
-            image_path = self.output_dir / f"{slide_id}_modelscope.jpg"
-            resp = requests.get(image_url)
-            resp.raise_for_status()
-            with open(image_path, 'wb') as f:
-                f.write(resp.content)
-            return str(image_path)
+            last_err = None
+            for attempt in range(4):
+                try:
+                    headers = {
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                        "X-ModelScope-Async-Mode": "true",
+                    }
+                    submit = requests.post(
+                        api_url,
+                        headers=headers,
+                        data=json.dumps({
+                            "model": model,
+                            "prompt": enhanced_prompt
+                        }, ensure_ascii=False).encode('utf-8')
+                    )
+                    # Retryable on 429/5xx
+                    if submit.status_code in (429, 500, 502, 503, 504):
+                        raise RuntimeError(f"ModelScope submit HTTP {submit.status_code}: {submit.text[:160]}")
+                    submit.raise_for_status()
+                    task_id = submit.json().get("task_id")
+                    if not task_id:
+                        raise RuntimeError(f"ModelScope submit missing task_id: {submit.text[:200]}")
+                    poll_headers = {
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                        "X-ModelScope-Task-Type": "image_generation",
+                    }
+                    image_url = None
+                    for _ in range(18):
+                        r = requests.get(f"{base_url}v1/tasks/{task_id}", headers=poll_headers)
+                        if r.status_code in (429, 500, 502, 503, 504):
+                            time.sleep(5)
+                            continue
+                        r.raise_for_status()
+                        data = r.json()
+                        status = data.get("task_status")
+                        if status == "SUCCEED":
+                            outs = data.get("output_images") or []
+                            if outs:
+                                image_url = outs[0]
+                            break
+                        if status == "FAILED":
+                            raise RuntimeError(f"ModelScope task failed: {data}")
+                        time.sleep(5)
+                    if not image_url:
+                        raise RuntimeError("ModelScope task did not succeed in time")
+                    image_path = self.output_dir / f"{slide_id}_modelscope.jpg"
+                    # Download with simple retry (reuse helper)
+                    self._download_image(image_url, image_path)
+                    return str(image_path)
+                except Exception as e:
+                    last_err = e
+                    msg = str(e)
+                    if attempt < 3:
+                        wait_seconds = 2 ** (attempt + 1)
+                        logger.warning(f"[ImageGen] ModelScope API call failed (attempt {attempt+1}/4): {msg[:200]}, retrying in {wait_seconds}s...")
+                        time.sleep(wait_seconds)
+                    else:
+                        logger.error(f"ModelScope image generation failed (final): {msg}")
+                        break
         except Exception as e:
             logger.error(f"ModelScope image generation failed: {e}")
         return None
@@ -267,12 +340,26 @@ class ImageGenerator:
         return f"{prompt}, {keywords}, high quality, detailed"
 
     def _download_image(self, url: str, save_path: Path):
-        """Download image from URL"""
-        response = requests.get(url)
-        response.raise_for_status()
-
-        with open(save_path, 'wb') as f:
-            f.write(response.content)
-
-        logger.info(f"Downloaded image to {save_path}")
+        """Download image from URL with unified retries"""
+        last_err = None
+        for attempt in range(4):
+            try:
+                response = requests.get(url)
+                # Retryable status codes
+                if response.status_code in (429, 500, 502, 503, 504):
+                    raise RuntimeError(f"HTTP {response.status_code}")
+                response.raise_for_status()
+                with open(save_path, 'wb') as f:
+                    f.write(response.content)
+                logger.info(f"Downloaded image to {save_path}")
+                return
+            except Exception as e:
+                last_err = e
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[ImageGen] download failed (attempt {attempt+1}/4): {str(e)[:200]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"Image download failed (final): {e}")
+                    raise
 

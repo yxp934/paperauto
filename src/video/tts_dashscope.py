@@ -67,7 +67,7 @@ def generate_audio(text: str, output_dir: str = "temp/audio") -> Tuple[str, floa
         synthesizer = SpeechSynthesizer(model=model, voice=voice)
         audio_bytes = None
         last_err = None
-        max_attempts = 6
+        max_attempts = 4  # total attempts
         for attempt in range(max_attempts):
             try:
                 # serialize all TTS calls to avoid concurrent-session errors
@@ -75,21 +75,28 @@ def generate_audio(text: str, output_dir: str = "temp/audio") -> Tuple[str, floa
                     audio_bytes = synthesizer.call(text)
                 if audio_bytes:
                     break
+                raise RuntimeError("DashScope TTS returned empty audio bytes")
             except Exception as e:
                 last_err = e
                 msg = str(e)
-                logger.warning(f"DashScope TTS 调用失败，重试中 (attempt {attempt+1}/{max_attempts}): {msg}")
-                # 并发/限速/SSL错误：重新实例化并指数退避
                 lower = msg.lower()
-                if ("already started" in lower) or ("already_started" in lower) or ("too many requests" in lower) or ("429" in lower) or ("ssl" in lower) or ("eof" in lower):
+                # Retryable conditions: concurrency, rate limit, SSL/EOF/network
+                retryable = ("already started" in lower) or ("already_started" in lower) or ("too many requests" in lower) or ("429" in lower) or ("ssl" in lower) or ("eof" in lower) or ("connection" in lower) or ("timeout" in lower)
+                if attempt < max_attempts - 1 and retryable:
+                    wait_seconds = 2 ** (attempt + 1)  # 2, 4, 8
+                    logger.warning(f"[TTS] DashScope API call failed (attempt {attempt+1}/{max_attempts}): {msg[:200]}, retrying in {wait_seconds}s...")
                     try:
+                        # Re-instantiate to clear bad session
                         synthesizer = SpeechSynthesizer(model=model, voice=voice)
                     except Exception:
                         pass
-                try:
-                    import time as _t; _t.sleep(3 + attempt * 2)
-                except Exception:
-                    pass
+                    try:
+                        import time as _t; _t.sleep(wait_seconds)
+                    except Exception:
+                        pass
+                else:
+                    logger.error(f"DashScope TTS 调用失败 (final): {msg}")
+                    break
         if not audio_bytes:
             raise Exception(f"DashScope TTS 返回空音频或失败: {last_err}")
 

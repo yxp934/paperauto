@@ -133,36 +133,95 @@ class LLMClient:
         api_key = self.gemini_key or self.generic_key
         model = self.gemini_model
         # Try SDK first
+        # SDK path with retries
         try:
             from google import genai
-            client = genai.Client(api_key=api_key)
-            resp = client.models.generate_content(model=model, contents=contents)
-            text = getattr(resp, 'text', '') or ''
-            return text.strip()
+            for attempt in range(4):
+                try:
+                    client = genai.Client(api_key=api_key)
+                    resp = client.models.generate_content(
+                        model=model,
+                        contents=contents,
+                        config={"response_mime_type": "application/json"}
+                    )
+                    text = (getattr(resp, 'text', '') or '').strip()
+                    if text:
+                        return text
+                    raise RuntimeError("Gemini SDK returned empty text")
+                except Exception as e:
+                    # ImportError is handled outside; other errors are retryable unless clearly auth/permission
+                    msg = str(e)
+                    if attempt < 3:
+                        wait_seconds = 2 ** (attempt + 1)
+                        logger.warning(f"[LLMClient] Gemini SDK call failed (attempt {attempt+1}/4): {msg[:200]}, retrying in {wait_seconds}s...")
+                        time.sleep(wait_seconds)
+                    else:
+                        logger.error(f"LLM API调用异常 (Gemini SDK final): {msg}")
+                        break
         except ImportError:
             pass
-        # Fallback to REST without overriding model in URL
-        try:
-            body = {
-                "contents": [{"role": "user", "parts": [{"text": contents}]}],
-                "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
-            }
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-            data = json.dumps(body).encode("utf-8")
-            req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
-            with request.urlopen(req) as resp:
-                raw = resp.read().decode("utf-8", errors="ignore")
-            obj = json.loads(raw)
-            parts = []
-            for cand in (obj.get("candidates") or []):
-                content = (cand.get("content") or {})
-                for part in (content.get("parts") or []):
-                    if isinstance(part, dict) and part.get("text"):
-                        parts.append(part["text"])
-            return "\n".join(parts).strip()
-        except Exception as e:
-            logger.error(f"LLM API调用异常 (Gemini SDK/REST): {e}")
-            return ""
+        # REST path with retries (do not override model in URL)
+        for attempt in range(4):
+            try:
+                body = {
+                    "contents": [{"role": "user", "parts": [{"text": contents}]}],
+                    "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
+                    "response_mime_type": "application/json"
+                }
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                data = json.dumps(body).encode("utf-8")
+                req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+                with request.urlopen(req) as resp:
+                    raw = resp.read().decode("utf-8", errors="ignore")
+                obj = json.loads(raw)
+                parts = []
+                for cand in (obj.get("candidates") or []):
+                    content = (cand.get("content") or {})
+                    for part in (content.get("parts") or []):
+                        if isinstance(part, dict) and part.get("text"):
+                            parts.append(part["text"])
+                text = "\n".join(parts).strip()
+                if text:
+                    return text
+                raise RuntimeError("Gemini REST returned empty text")
+            except error.HTTPError as e:
+                code = getattr(e, 'code', 0)
+                body = ""
+                try:
+                    body = e.read().decode("utf-8", errors="ignore")
+                except Exception:
+                    pass
+                # Non-retryable
+                if code in (400, 401, 403, 404):
+                    logger.error(f"LLM API调用失败 (Gemini REST {code}): {body[:300]}")
+                    return ""
+                # Retryable
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] Gemini REST call failed (attempt {attempt+1}/4): HTTP {code} {body[:160]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用失败 (Gemini REST final {code}): {body[:300]}")
+                    return ""
+            except error.URLError as e:
+                msg = getattr(e, 'reason', e)
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] Gemini REST call failed (attempt {attempt+1}/4): {str(msg)[:200]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用异常 (Gemini REST final): {msg}")
+                    return ""
+            except Exception as e:
+                msg = str(e)
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] Gemini REST call failed (attempt {attempt+1}/4): {msg[:200]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用异常 (Gemini REST final): {msg}")
+                    return ""
+        return ""
 
     def _chat_openai(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
         # Use the REST API to avoid extra deps
@@ -179,71 +238,127 @@ class LLMClient:
             },
             method="POST",
         )
-        try:
-            with request.urlopen(req) as resp:
-                raw = resp.read().decode("utf-8", errors="ignore")
-            obj = json.loads(raw)
-            choices = obj.get("choices") or []
-            if choices and choices[0].get("message", {}).get("content"):
-                text = choices[0]["message"]["content"].strip()
-                logger.info(f"LLM调用成功（OpenAI），返回 {len(text)} 字符")
-                return text
-            return ""
-        except error.HTTPError as e:
-            body = ""
+        for attempt in range(4):
             try:
-                body = e.read().decode("utf-8", errors="ignore")
-            except Exception:
-                pass
-            code = getattr(e, 'code', 'HTTPError')
-            logger.error(f"LLM API调用失败 (OpenAI) {code}: {body[:500]}")
-            return ""
-        except error.URLError as e:
-            logger.error(f"LLM API调用异常 (OpenAI) URL: {getattr(e, 'reason', e)}")
-            return ""
-        except Exception as e:
-            logger.error(f"LLM API调用异常 (OpenAI): {e}")
-            return ""
+                with request.urlopen(req) as resp:
+                    raw = resp.read().decode("utf-8", errors="ignore")
+                obj = json.loads(raw)
+                choices = obj.get("choices") or []
+                if choices and choices[0].get("message", {}).get("content"):
+                    text = choices[0]["message"]["content"].strip()
+                    logger.info(f"LLM调用成功（OpenAI），返回 {len(text)} 字符")
+                    return text
+                raise RuntimeError("OpenAI returned empty choices/content")
+            except error.HTTPError as e:
+                body = ""
+                try:
+                    body = e.read().decode("utf-8", errors="ignore")
+                except Exception:
+                    pass
+                code = getattr(e, 'code', 0)
+                # 不可重试
+                if code in (400, 401, 403, 404):
+                    logger.error(f"LLM API调用失败 (OpenAI {code}): {body[:300]}")
+                    return ""
+                # 可重试
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] OpenAI API call failed (attempt {attempt+1}/4): HTTP {code} {body[:160]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用失败 (OpenAI final {code}): {body[:300]}")
+                    return ""
+            except error.URLError as e:
+                msg = getattr(e, 'reason', e)
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] OpenAI API call failed (attempt {attempt+1}/4): {str(msg)[:200]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用异常 (OpenAI final): {msg}")
+                    return ""
+            except Exception as e:
+                msg = str(e)
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] OpenAI API call failed (attempt {attempt+1}/4): {msg[:200]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用异常 (OpenAI final): {msg}")
+                    return ""
+        return ""
 
     def _chat_huggingface(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
         """Call HuggingFace Inference API for text generation."""
-        try:
-            # Build a simple prompt from messages
-            sys_txt = "\n".join(m.get("content", "") for m in messages if m.get("role") == "system").strip()
-            usr_txt = "\n\n".join(m.get("content", "") for m in messages if m.get("role") in {"user", "assistant"}).strip()
-            prompt = (sys_txt + "\n\n" + usr_txt).strip() if sys_txt else usr_txt
-            import json
-            from urllib import request as _rq
-            url = f"https://api-inference.huggingface.co/models/{self.hf_model}"
-            data = json.dumps({
-                "inputs": prompt,
-                "parameters": {"max_new_tokens": max_tokens, "temperature": temperature},
-                "options": {"wait_for_model": True}
-            }).encode("utf-8")
-            req = _rq.Request(url, data=data, headers={
-                "Authorization": f"Bearer {self.hf_key}",
-                "Content-Type": "application/json",
-            }, method="POST")
-            with _rq.urlopen(req) as resp:
-                raw = resp.read().decode("utf-8", errors="ignore")
+        for attempt in range(4):
             try:
-                obj = json.loads(raw)
-            except Exception:
-                obj = None
-            if isinstance(obj, list) and obj and isinstance(obj[0], dict) and obj[0].get('generated_text'):
-                text = str(obj[0]['generated_text']).strip()
-                logger.info(f"LLM调用成功（HuggingFace），返回 {len(text)} 字符")
-                return text
-            # some models return dict with 'generated_text'
-            if isinstance(obj, dict) and obj.get('generated_text'):
-                text = str(obj['generated_text']).strip()
-                logger.info(f"LLM调用成功（HuggingFace），返回 {len(text)} 字符")
-                return text
-            logger.error(f"LLM API调用失败 (HF) unexpected response: {raw[:300]}")
-            return ""
-        except Exception as e:
-            logger.error(f"LLM API调用异常 (HF): {e}")
-            return ""
+                # Build a simple prompt from messages
+                sys_txt = "\n".join(m.get("content", "") for m in messages if m.get("role") == "system").strip()
+                usr_txt = "\n\n".join(m.get("content", "") for m in messages if m.get("role") in {"user", "assistant"}).strip()
+                prompt = (sys_txt + "\n\n" + usr_txt).strip() if sys_txt else usr_txt
+                import json
+                from urllib import request as _rq, error as _er
+                url = f"https://api-inference.huggingface.co/models/{self.hf_model}"
+                data = json.dumps({
+                    "inputs": prompt,
+                    "parameters": {"max_new_tokens": max_tokens, "temperature": temperature},
+                    "options": {"wait_for_model": True}
+                }).encode("utf-8")
+                req = _rq.Request(url, data=data, headers={
+                    "Authorization": f"Bearer {self.hf_key}",
+                    "Content-Type": "application/json",
+                }, method="POST")
+                with _rq.urlopen(req) as resp:
+                    raw = resp.read().decode("utf-8", errors="ignore")
+                try:
+                    obj = json.loads(raw)
+                except Exception:
+                    obj = None
+                if isinstance(obj, list) and obj and isinstance(obj[0], dict) and obj[0].get('generated_text'):
+                    text = str(obj[0]['generated_text']).strip()
+                    logger.info(f"LLM调用成功（HuggingFace），返回 {len(text)} 字符")
+                    return text
+                if isinstance(obj, dict) and obj.get('generated_text'):
+                    text = str(obj['generated_text']).strip()
+                    logger.info(f"LLM调用成功（HuggingFace），返回 {len(text)} 字符")
+                    return text
+                raise RuntimeError("HF returned unexpected/empty response")
+            except _er.HTTPError as e:
+                code = getattr(e, 'code', 0)
+                body = ""
+                try:
+                    body = e.read().decode("utf-8", errors="ignore")
+                except Exception:
+                    pass
+                if code in (400, 401, 403, 404):
+                    logger.error(f"LLM API调用失败 (HF {code}): {body[:300]}")
+                    return ""
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] HF API call failed (attempt {attempt+1}/4): HTTP {code} {body[:160]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用失败 (HF final {code}): {body[:300]}")
+                    return ""
+            except _er.URLError as e:
+                msg = getattr(e, 'reason', e)
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] HF API call failed (attempt {attempt+1}/4): {str(msg)[:200]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用异常 (HF final): {msg}")
+                    return ""
+            except Exception as e:
+                msg = str(e)
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] HF API call failed (attempt {attempt+1}/4): {msg[:200]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用异常 (HF final): {msg}")
+                    return ""
+        return ""
     # --------------------------- Quality Helpers ---------------------------
     @staticmethod
     def _is_chinese_dominant(text: str, threshold: float = 0.7) -> bool:
