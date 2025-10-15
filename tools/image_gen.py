@@ -119,8 +119,9 @@ class ImageGenerator:
         try:
             import json, urllib.request
             enhanced_prompt = self._enhance_prompt(prompt, style)
+            base = os.getenv("OPENAI_BASE_URL", "https://api.openai.com").rstrip('/')
             req = urllib.request.Request(
-                url="https://api.openai.com/v1/images/generations",
+                url=f"{base}/v1/images/generations",
                 data=json.dumps({
                     "model": os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1"),
                     "prompt": enhanced_prompt,

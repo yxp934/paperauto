@@ -168,7 +168,8 @@ class LLMClient:
 
     def _chat_openai(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
         # Use the REST API to avoid extra deps
-        url = "https://api.openai.com/v1/chat/completions"
+        base = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com")
+        url = f"{base.rstrip('/')}/v1/chat/completions"
         body = {"model": self.openai_model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
         data = json.dumps(body).encode("utf-8")
         req = request.Request(
@@ -308,6 +309,10 @@ class LLMClient:
                     return txt[:8000]
         except Exception:
             pass
+        # If providers configured, do NOT heuristic-expand; return empty to force upstream failure
+        if self.generic_key or self.gemini_key or self.openai_key or self.hf_key:
+            logger.error("heuristic expansion forbidden with providers configured; returning empty")
+            return ""
         # Heuristic expansion as last resort (no LLM)
         base = f"本部分围绕{t}进行详细讲解，从研究动机、关键概念、典型方法、实践细节与潜在问题等角度展开，力求清晰、连贯且可操作。"
         # Remove mostly-ASCII lines
@@ -443,7 +448,10 @@ class LLMClient:
                     }
                 )
         if not sections:
-            # Heuristic fallback
+            # No heuristic fallback allowed when providers configured
+            if self.generic_key or self.gemini_key or self.openai_key or self.hf_key:
+                raise RuntimeError("LLM providers configured but failed to produce structured sections; no heuristic fallback allowed")
+            # If absolutely no providers, allow a minimal heuristic to keep pipeline usable offline
             lines = [x.strip() for x in re.split(r"[\n。.!?]", abstract) if x.strip()]
             bullets = lines[:4] or ["暂无摘要"]
             sections = [
@@ -659,9 +667,10 @@ class LLMClient:
                     return script
             time.sleep(0.8 * (attempt + 1))
 
-        # 启发式回退（仅在 LLM 不可用或持续失败时）：翻译与扩展为中文、且每段≥600字
-        logger.info("[llm] gen_script fallback | using heuristic Chinese expansion: %s", section_title)
-        # 1) bullets：章节摘要切句，不足用模板补齐
+        # No heuristic fallback allowed when providers are configured
+        if self.generic_key or self.gemini_key or self.openai_key or self.hf_key:
+            raise RuntimeError("generate_section_script failed and fallback is not allowed; fix LLM connectivity/config")
+        # If truly offline (no providers), keep a minimal heuristic to avoid total failure
         sent = [s.strip() for s in re.split(r'[。.!?]', section_summary) if s.strip()]
         bullets: list[str] = []
         for s in sent:
@@ -669,23 +678,8 @@ class LLMClient:
             if len(s) >= 8 and s not in bullets:
                 bullets.append(s)
         if len(bullets) < 3:
-            title_map = {
-                'Introduction': ["研究背景与动机", "核心问题与意义", "主要贡献概览"],
-                'Background':   ["相关工作与差异", "理论基础", "技术路线概览"],
-                'Method':       ["总体框架与流程", "关键算法与模块", "复杂度与实现要点"],
-                'Experiments':  ["数据集与设置", "指标与对比方法", "实验设置与关键结果"],
-                'Results':      ["总体效果与提升", "细分场景表现", "消融与可视化分析"],
-                'Conclusion':   ["结论与贡献", "局限与风险", "未来工作与应用前景"],
-            }
-            chose = []
-            for k, v in title_map.items():
-                if k.lower() in section_title.lower(): chose = v; break
-            if not chose:
-                chose = ["问题与场景", "方法与实现", "实验与结论"]
-            for s in chose:
-                if len(bullets) >= 5: break
-                if s not in bullets: bullets.append(s)
-        # 2) narration parts：把摘要与章节摘要合并后，翻译/改写为两段中文，各≥600
+            bullets += ["问题与场景", "方法与实现", "实验与结论"]
+            bullets = bullets[:5]
         base_content = (section_summary or "")
         p1 = self._expand_to_chinese(base_content, f"{section_title}-上半部分", min_len=600)
         p2 = self._expand_to_chinese(base_content, f"{section_title}-下半部分", min_len=600)
@@ -696,6 +690,6 @@ class LLMClient:
             "narration_parts": parts,
             "narration": "\n\n".join(parts),
         }
-        logger.info("章节脚本（回退）生成完成: %s narr_lens=%s", script['title'], str([len(x) for x in parts]))
+        logger.info("章节脚本（离线回退）生成完成: %s narr_lens=%s", script['title'], str([len(x) for x in parts]))
         return script
 
