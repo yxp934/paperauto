@@ -91,7 +91,7 @@ class ScriptAgent(BaseAgent):
                 # Call LLM
                 response, prompt_tokens, completion_tokens = self.call_llm(
                     [system_msg, user_msg],
-                    temperature=0.3 + 0.1 * attempt,
+                    temperature=0.2 + 0.05 * attempt,
                     max_tokens=8192,
                     response_schema=self.script_schema
                 )
@@ -217,10 +217,11 @@ class ScriptAgent(BaseAgent):
     def _post_process(self, script: Dict, section: Dict, paper_context: Dict) -> Dict:
         """Enforce Chinese-only and reduce duplication; may perform one rewrite via LLM."""
         parts = script.get('narration_parts', []) or []
-        # Compute English letter ratio
-        letters = sum(1 for c in ''.join(parts) if c.isalpha())
-        cjk = sum(1 for c in ''.join(parts) if '\u4e00' <= c <= '\u9fff')
-        ratio_en = letters / max(1, (letters + cjk))
+        # Compute ASCII English letter ratio only
+        combined_text = ''.join(parts)
+        letters_ascii = sum(1 for c in combined_text if ('A' <= c <= 'Z') or ('a' <= c <= 'z'))
+        cjk = sum(1 for c in combined_text if '\u4e00' <= c <= '\u9fff')
+        ratio_en = letters_ascii / max(1, (letters_ascii + cjk))
         zh_ratio = self._chinese_ratio(parts)
 
         # Similarity between the two parts using 3-gram Jaccard
@@ -233,34 +234,50 @@ class ScriptAgent(BaseAgent):
             if a and b:
                 sim = len(a & b) / max(1, len(a | b))
 
-        need_rewrite = (ratio_en > 0.05) or (zh_ratio < 0.90) or (sim > 0.10)
+        need_rewrite = (ratio_en > 0.02) or (zh_ratio < 0.95) or (sim > 0.10)
         if not need_rewrite:
             return script
 
-        # Build rewrite prompt to enforce pure Chinese, >=600 chars each part, remove English letters
+        # Template phrase blacklist
+        templates = ["大家好", "今天我们来聊聊", "想象一下", "我们不妨先", "总之", "综上所述", "接下来让我们看看"]
+        has_template = any(t in combined_text for t in templates)
+
+        # Build rewrite prompt to enforce pure Chinese, ≥600 chars each part, no ASCII letters, no templates
         system = (
-            "你是一名中文科普视频的资深撰稿人。请将给定的两段旁白改写为地道、自然、具有吸引力的中文口语体。"
-            "严格要求：1) 禁止出现任何英文字母；2) 每段≥600字；3) 保留原意并提升信息密度；4) 两段内容避免相似或重复表述。"
-            "仅输出JSON：{\"narration_parts\":[\"段1\",\"段2\"]}"
+            "你是一名中文科普视频的资深撰稿人。请将给定的两段旁白改写为地道、自然、具有吸引力且高信息密度的中文口语体。"
+            "严格要求：1) 禁止出现任何英文字母[a-zA-Z]；2) 每段≥600字；3) 必须结合章节与上下文内容，不得空泛；"
+            "4) 两段内容避免相似或重复表述；5) 严禁套话/模板化开头（如‘大家好’、‘今天我们来聊聊’、‘想象一下’等）。"
+            "仅输出JSON对象，键为 narration_parts，格式为：{\\\"narration_parts\\\":[\\\"段1\\\",\\\"段2\\\"]}"
         )
         user = (
             f"论文标题：{paper_context.get('title','')}\n"
             f"章节：{section.get('title','')}\n"
+            f"是否检测到模板句：{has_template}\n"
             f"原始旁白：\nPART1:\n{parts[0] if parts else ''}\n\nPART2:\n{parts[1] if len(parts)>1 else ''}\n"
         )
-        try:
-            resp, _, _ = self.call_llm([
-                {"role": "system", "content": system},
-                {"role": "user", "content": user}
-            ], temperature=0.2, max_tokens=8192, response_schema=self.narration_only_schema)
-            data = self.extract_json(resp) or {}
-            new_parts = [str(x) for x in (data.get('narration_parts') or [])][:2]
-            if len(new_parts) == 2 and all(len(p) >= 600 for p in new_parts):
-                script['narration_parts'] = new_parts
-                script['narration'] = "\n\n".join(new_parts)
-                return script
-        except Exception as e:
-            logger.warning(f"[ScriptAgent] rewrite failed: {e}")
+        # Try up to 2 rewrite attempts
+        for _ in range(2):
+            try:
+                resp, _, _ = self.call_llm([
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user}
+                ], temperature=0.15, max_tokens=8192, response_schema=self.narration_only_schema)
+                data = self.extract_json(resp) or {}
+                new_parts = [str(x) for x in (data.get('narration_parts') or [])][:2]
+                if len(new_parts) == 2:
+                    # Recompute quality gates
+                    zh = self._chinese_ratio(new_parts)
+                    letters_ascii2 = sum(1 for c in ''.join(new_parts) if ('A' <= c <= 'Z') or ('a' <= c <= 'z'))
+                    cjk2 = sum(1 for c in ''.join(new_parts) if '\u4e00' <= c <= '\u9fff')
+                    ratio_en2 = letters_ascii2 / max(1, letters_ascii2 + cjk2)
+                    if all(len(p) >= 600 for p in new_parts) and zh >= 0.95 and ratio_en2 <= 0.02:
+                        script['narration_parts'] = new_parts
+                        script['narration'] = "\n\n".join(new_parts)
+                        return script
+                    else:
+                        user = user + "\n\n上次未满足条件（或检测到英文/模板/长度不足），请严格重写。"
+            except Exception as e:
+                logger.warning(f"[ScriptAgent] rewrite failed: {e}")
 
         # Last resort: strip English letters and extend
         fixed = []
@@ -329,8 +346,8 @@ class ScriptAgent(BaseAgent):
 
         combined = "".join(texts)
         cjk = sum(1 for c in combined if '\u4e00' <= c <= '\u9fff')
-        letters = sum(1 for c in combined if c.isalpha())
-        total = max(1, cjk + letters)
+        letters_ascii = sum(1 for c in combined if ('A' <= c <= 'Z') or ('a' <= c <= 'z'))
+        total = max(1, cjk + letters_ascii)
         return cjk / total
 
     def _heuristic_fallback(self, section: Dict, paper_context: Dict) -> Dict:
