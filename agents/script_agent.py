@@ -66,7 +66,23 @@ class ScriptAgent(BaseAgent):
                 # Extract JSON
                 data = self.extract_json(response)
                 if not data:
-                    logger.warning(f"[ScriptAgent] Attempt {attempt+1}: Failed to parse JSON")
+                    # One more JSON-only try within the same attempt
+                    logger.warning(f"[ScriptAgent] Attempt {attempt+1}: Failed to parse JSON, requesting JSON-only minimal schema")
+                    json_only_sys = (
+                        "你只需输出严格 JSON 对象，禁止任何解释或前后缀。结构: "
+                        "{\"title\": \"...\", \"bullets\": [\"...\", \"...\", \"...\"], \"narration_parts\": [\"段1\", \"段2\"]}"
+                    )
+                    json_only_user = user_content + "\n\n仅输出 JSON 对象，不要代码块标记。"
+                    try:
+                        resp2, _, _ = self.call_llm([
+                            {"role": "system", "content": json_only_sys},
+                            {"role": "user", "content": json_only_user}
+                        ], temperature=0.1, max_tokens=4096)
+                        data = self.extract_json(resp2)
+                    except Exception as _:
+                        data = None
+                if not data:
+                    logger.warning(f"[ScriptAgent] Attempt {attempt+1}: Failed to parse JSON (after JSON-only request)")
                     continue
 
                 # Validate and repair
