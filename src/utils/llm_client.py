@@ -250,6 +250,8 @@ class LLMClient:
                         }
                     )
                     text = (getattr(resp, 'text', '') or '').strip()
+                    preview = text[:200].replace('\n',' ')
+                    self._log("info", f"[LLM] Gemini SDK text len={len(text)} preview: {preview}")
                     if text:
                         return text
                     raise RuntimeError("Gemini SDK returned empty text")
