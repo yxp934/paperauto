@@ -134,64 +134,83 @@ class ImageGenerator:
                 },
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=60) as resp:
+            with urllib.request.urlopen(req) as resp:
                 obj = json.loads(resp.read().decode("utf-8", errors="ignore"))
-            if obj.get("data") and obj["data"][0].get("url"):
-                image_url = obj["data"][0]["url"]
-                image_path = self.output_dir / f"{slide_id}_openai.png"
-                self._download_image(image_url, image_path)
-                return str(image_path)
+            data = obj.get("data") or []
+            if isinstance(data, list) and data:
+                if data[0].get("url"):
+                    image_url = data[0]["url"]
+                    image_path = self.output_dir / f"{slide_id}_openai.png"
+                    self._download_image(image_url, image_path)
+                    return str(image_path)
+                if data[0].get("b64_json"):
+                    import base64
+                    image_path = self.output_dir / f"{slide_id}_openai.png"
+                    with open(image_path, 'wb') as f:
+                        f.write(base64.b64decode(data[0]["b64_json"]))
+                    return str(image_path)
         except Exception as e:
             logger.error(f"OpenAI REST image generation failed: {e}")
         return None
 
     def _generate_with_modelscope(self, prompt: str, slide_id: str, style: str) -> Optional[str]:
-        """Generate image using ModelScope Images API"""
+        """Generate image using ModelScope Images API (async mode with polling)."""
         try:
-            import json, urllib.request
-            api_url = os.getenv("IMAGE_API_URL")
+            import json, requests, time
+            api_url = os.getenv("IMAGE_API_URL") or "https://api-inference.modelscope.cn/v1/images/generations"
             api_key = os.getenv("IMAGE_API_KEY")
-            model = os.getenv("IMAGE_MODEL")
+            model = os.getenv("IMAGE_MODEL") or "Qwen/Qwen-Image"
             if not (api_url and api_key and model):
                 return None
             enhanced_prompt = self._enhance_prompt(prompt, style)
-            req = urllib.request.Request(
-                url=api_url,
+            # Derive base for task polling
+            base_url = api_url.split("/v1/")[0].rstrip('/') + '/'
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "X-ModelScope-Async-Mode": "true",
+            }
+            submit = requests.post(
+                api_url,
+                headers=headers,
                 data=json.dumps({
                     "model": model,
-                    "prompt": enhanced_prompt,
-                    "size": "1024x1024",
-                    "n": 1
-                }).encode("utf-8"),
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {api_key}",
-                },
-                method="POST",
+                    "prompt": enhanced_prompt
+                }, ensure_ascii=False).encode('utf-8')
             )
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                obj = json.loads(resp.read().decode("utf-8", errors="ignore"))
-            # Try url first
-            url = None
-            if isinstance(obj, dict):
-                data = obj.get("data")
-                if isinstance(data, list) and data:
-                    url = data[0].get("url")
-                    b64 = data[0].get("b64_json")
-                else:
-                    url = obj.get("url")
-                    b64 = obj.get("b64_json")
-            else:
-                url = None; b64 = None
-            image_path = self.output_dir / f"{slide_id}_modelscope.png"
-            if url:
-                self._download_image(url, image_path)
-                return str(image_path)
-            if b64:
-                import base64
-                with open(image_path, 'wb') as f:
-                    f.write(base64.b64decode(b64))
-                return str(image_path)
+            submit.raise_for_status()
+            task_id = submit.json().get("task_id")
+            if not task_id:
+                raise RuntimeError(f"ModelScope submit missing task_id: {submit.text[:200]}")
+            # Poll task
+            poll_headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "X-ModelScope-Task-Type": "image_generation",
+            }
+            image_url = None
+            for _ in range(18):  # up to ~90s without explicit timeout
+                r = requests.get(f"{base_url}v1/tasks/{task_id}", headers=poll_headers)
+                r.raise_for_status()
+                data = r.json()
+                status = data.get("task_status")
+                if status == "SUCCEED":
+                    outs = data.get("output_images") or []
+                    if outs:
+                        image_url = outs[0]
+                    break
+                if status == "FAILED":
+                    raise RuntimeError(f"ModelScope task failed: {data}")
+                time.sleep(5)
+            if not image_url:
+                raise RuntimeError("ModelScope task did not succeed in time")
+            # Download image
+            image_path = self.output_dir / f"{slide_id}_modelscope.jpg"
+            resp = requests.get(image_url)
+            resp.raise_for_status()
+            with open(image_path, 'wb') as f:
+                f.write(resp.content)
+            return str(image_path)
         except Exception as e:
             logger.error(f"ModelScope image generation failed: {e}")
         return None
@@ -247,7 +266,7 @@ class ImageGenerator:
 
     def _download_image(self, url: str, save_path: Path):
         """Download image from URL"""
-        response = requests.get(url, timeout=30)
+        response = requests.get(url)
         response.raise_for_status()
 
         with open(save_path, 'wb') as f:

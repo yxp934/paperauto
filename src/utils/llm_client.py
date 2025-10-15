@@ -29,12 +29,12 @@ class LLMClient:
             or os.environ.get("GOOGLE_API_KEY")
             or os.environ.get("LLM_API_KEY")
         )
-        self.gemini_model = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash-latest")
+        self.gemini_model = os.environ.get("GEMINI_MODEL") or os.environ.get("LLM_MODEL") or "gemini-2.5-flash"
         self.openai_key = os.environ.get("OPENAI_API_KEY")
         self.openai_model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
         # HuggingFace Inference API (optional)
         self.hf_key = os.environ.get("HUGGINGFACE_API_KEY")
-        self.hf_model = os.environ.get("HUGGINGFACE_MODEL", "google/gemma-2-2b-it")
+        self.hf_model = os.environ.get("HUGGINGFACE_MODEL", "Qwen/Qwen2.5-7B-Instruct")
 
     # --------------------------- Core chat ---------------------------
     def chat_completion(self, messages: List[Dict[str, str]], temperature: float = 0.3, max_tokens: int = 2048) -> str:
@@ -77,14 +77,7 @@ class LLMClient:
         # Prefer model from env if provided and URL is a template without model
         import urllib.parse as _up
         url = self.generic_url or ""
-        if self.generic_model and "models/" in url:
-            # try to replace the model segment between 'models/' and ':'
-            try:
-                prefix, rest = url.split("models/", 1)
-                _, suffix = rest.split(":", 1)
-                url = f"{prefix}models/{self.generic_model}:{suffix}"
-            except Exception:
-                pass
+        # Do not override model if URL already includes full path
         # add key query if absent
         parsed = _up.urlparse(url)
         q = _up.parse_qs(parsed.query)
@@ -93,9 +86,12 @@ class LLMClient:
             new_query = _up.urlencode(q, doseq=True)
             url = _up.urlunparse(parsed._replace(query=new_query))
         data = json.dumps(body).encode("utf-8")
-        req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+        _headers = {"Content-Type": "application/json"}
+        if self.generic_key:
+            _headers.setdefault("x-goog-api-key", self.generic_key)
+        req = request.Request(url, data=data, headers=_headers, method="POST")
         try:
-            with request.urlopen(req, timeout=int(os.getenv('LLM_TIMEOUT', '35'))) as resp:
+            with request.urlopen(req) as resp:
                 raw = resp.read().decode("utf-8", errors="ignore")
             obj = json.loads(raw)
             parts = []
@@ -124,46 +120,48 @@ class LLMClient:
             return ""
 
     def _chat_gemini(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
-        # Merge messages into a single user prompt (Gemini content parts)
-        sys_txt = "\n".join(m["content"] for m in messages if m.get("role") == "system").strip()
-        usr_txt = "\n\n".join(m["content"] for m in messages if m.get("role") in {"user", "assistant"}).strip()
+        """Use official Google Gemini SDK when available; fall back to REST if SDK is missing.
+        No timeout is set anywhere per requirements.
+        """
+        # Merge messages into a single string
+        sys_txt = "\n".join(m.get("content", "") for m in messages if m.get("role") == "system").strip()
+        usr_txt = "\n\n".join(m.get("content", "") for m in messages if m.get("role") in {"user", "assistant"}).strip()
         if sys_txt:
-            usr_txt = f"[System instruction]\n{sys_txt}\n\n[User]\n{usr_txt}"
-        body = {
-            "contents": [{"role": "user", "parts": [{"text": usr_txt}]}],
-            "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
-        }
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.gemini_model}:generateContent?key={self.gemini_key}"
-        data = json.dumps(body).encode("utf-8")
-        req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+            contents = f"[System instruction]\n{sys_txt}\n\n[User]\n{usr_txt}"
+        else:
+            contents = usr_txt
+        api_key = self.gemini_key or self.generic_key
+        model = self.gemini_model
+        # Try SDK first
         try:
-            with request.urlopen(req, timeout=int(os.getenv('LLM_TIMEOUT', '35'))) as resp:
+            from google import genai
+            client = genai.Client(api_key=api_key)
+            resp = client.models.generate_content(model=model, contents=contents)
+            text = getattr(resp, 'text', '') or ''
+            return text.strip()
+        except ImportError:
+            pass
+        # Fallback to REST without overriding model in URL
+        try:
+            body = {
+                "contents": [{"role": "user", "parts": [{"text": contents}]}],
+                "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
+            }
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            data = json.dumps(body).encode("utf-8")
+            req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+            with request.urlopen(req) as resp:
                 raw = resp.read().decode("utf-8", errors="ignore")
             obj = json.loads(raw)
-            # Extract text from candidates
             parts = []
             for cand in (obj.get("candidates") or []):
                 content = (cand.get("content") or {})
                 for part in (content.get("parts") or []):
                     if isinstance(part, dict) and part.get("text"):
                         parts.append(part["text"])
-            text = "\n".join(parts).strip()
-            logger.info(f"LLM调用成功（Gemini），返回 {len(text)} 字符")
-            return text
-        except error.HTTPError as e:
-            body = ""
-            try:
-                body = e.read().decode("utf-8", errors="ignore")
-            except Exception:
-                pass
-            code = getattr(e, 'code', 'HTTPError')
-            logger.error(f"LLM API调用失败 (Gemini) {code}: {body[:500]}")
-            return ""
-        except error.URLError as e:
-            logger.error(f"LLM API调用异常 (Gemini) URL: {getattr(e, 'reason', e)}")
-            return ""
+            return "\n".join(parts).strip()
         except Exception as e:
-            logger.error(f"LLM API调用异常 (Gemini): {e}")
+            logger.error(f"LLM API调用异常 (Gemini SDK/REST): {e}")
             return ""
 
     def _chat_openai(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
@@ -182,7 +180,7 @@ class LLMClient:
             method="POST",
         )
         try:
-            with request.urlopen(req, timeout=int(os.getenv('LLM_TIMEOUT', '35'))) as resp:
+            with request.urlopen(req) as resp:
                 raw = resp.read().decode("utf-8", errors="ignore")
             obj = json.loads(raw)
             choices = obj.get("choices") or []
@@ -226,7 +224,7 @@ class LLMClient:
                 "Authorization": f"Bearer {self.hf_key}",
                 "Content-Type": "application/json",
             }, method="POST")
-            with _rq.urlopen(req, timeout=int(os.getenv('LLM_TIMEOUT', '60'))) as resp:
+            with _rq.urlopen(req) as resp:
                 raw = resp.read().decode("utf-8", errors="ignore")
             try:
                 obj = json.loads(raw)
