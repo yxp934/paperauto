@@ -15,6 +15,8 @@ class ScriptAgent(BaseAgent):
         super().__init__("ScriptAgent")
         self.llm_client = llm_client
         # Enforce structured outputs via response_schema
+        # NOTE: Removed minLength constraints from schema as they can cause Gemini API to hang
+        # Length validation is now done in post-processing with rewrite logic
         self.script_schema = {
             "type": "object",
             "properties": {
@@ -29,7 +31,7 @@ class ScriptAgent(BaseAgent):
                     "type": "array",
                     "minItems": 2,
                     "maxItems": 2,
-                    "items": {"type": "string", "minLength": 600}
+                    "items": {"type": "string"}
                 }
             },
             "required": ["title", "bullets", "narration_parts"]
@@ -41,7 +43,7 @@ class ScriptAgent(BaseAgent):
                     "type": "array",
                     "minItems": 2,
                     "maxItems": 2,
-                    "items": {"type": "string", "minLength": 600}
+                    "items": {"type": "string"}
                 }
             },
             "required": ["narration_parts"]
