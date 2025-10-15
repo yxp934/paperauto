@@ -67,12 +67,17 @@ class ScriptAgent(BaseAgent):
                 data = self.extract_json(response)
                 if not data:
                     # One more JSON-only try within the same attempt
-                    logger.warning(f"[ScriptAgent] Attempt {attempt+1}: Failed to parse JSON, requesting JSON-only minimal schema")
+                    logger.warning(f"[ScriptAgent] Attempt {attempt+1}: Failed to parse JSON, requesting JSON-only minimal schema (strict)")
                     json_only_sys = (
-                        "你只需输出严格 JSON 对象，禁止任何解释或前后缀。结构: "
-                        "{\"title\": \"...\", \"bullets\": [\"...\", \"...\", \"...\"], \"narration_parts\": [\"段1\", \"段2\"]}"
+                        "严格只输出 JSON 对象，不得包含任何前后缀、空行、注释或 Markdown 代码块标记(例如 ``` 或 ```json)。"
+                        "输出必须是单个 JSON 对象，并严格以 { 开始、以 } 结束；若非 JSON 或含多余字符，将被判定为错误并立即丢弃并重新生成。"
+                        "请严格按以下最小结构与顺序输出：{\"title\":\"...\",\"bullets\":[\"...\",\"...\",\"...\"],\"narration_parts\":[\"段1\",\"段2\"]}"
                     )
-                    json_only_user = user_content + "\n\n仅输出 JSON 对象，不要代码块标记。"
+                    json_only_user = (
+                        user_content
+                        + "\n\n仅输出严格 JSON 对象，禁止任何 ``` 或 ```json 代码块标记，不要任何解释性文字，"
+                        + "直接以 { 开始、以 } 结束，并确保有效 JSON。"
+                    )
                     try:
                         resp2, _, _ = self.call_llm([
                             {"role": "system", "content": json_only_sys},

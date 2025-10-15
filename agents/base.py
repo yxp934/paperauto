@@ -84,50 +84,97 @@ class BaseAgent:
         return input_cost + output_cost
     
     def extract_json(self, text: str) -> Optional[Dict]:
-        """Extract JSON from LLM response"""
+        """Extract JSON from LLM response with robust cleaning and brace scanning."""
         if not text:
             return None
-        
-        # Try direct parse
-        try:
-            return json.loads(text)
-        except Exception:
-            pass
-        
-        # Try to find JSON in markdown code block
+
         import re
-        # Strip BOM and code fences
-        cleaned = text.lstrip("\ufeff").strip()
+
+        # Normalize and clean invisible/control characters
+        cleaned = text
+        # Strip BOM and zero-width spaces / non-breaking spaces
+        cleaned = cleaned.lstrip("\ufeff").replace("\u200b", "").replace("\u200c", "").replace("\xa0", " ")
+        # Remove common markdown code fences
         cleaned = re.sub(r"^```(?:json)?\s*\n", "", cleaned, flags=re.IGNORECASE|re.MULTILINE)
         cleaned = re.sub(r"\n```\s*$", "", cleaned, flags=re.MULTILINE)
-        # First attempt: direct on cleaned
+        cleaned = cleaned.strip()
+
+        # 1) Try direct parse on fully cleaned text
         try:
             return json.loads(cleaned)
         except Exception:
             pass
-        # Patterns
+
+        # 2) Regex patterns to locate JSON object blocks
         patterns = [
             r'```json\s*(\{.*?\})\s*```',
             r'```\s*(\{.*?\})\s*```',
+            r'(\{[^\n]*\}\s*$)',  # same-line { ... }
             r'(\{.*?\})',
         ]
         for pattern in patterns:
-            match = re.search(pattern, cleaned, re.DOTALL)
-            if match:
-                frag = match.group(1)
+            m = re.search(pattern, cleaned, re.DOTALL)
+            if m:
+                frag = m.group(1)
                 try:
                     return json.loads(frag)
                 except Exception:
+                    # try trailing comma fix
+                    try:
+                        frag2 = re.sub(r',\s*([}\]])', r'\1', frag)
+                        return json.loads(frag2)
+                    except Exception:
+                        continue
+
+        # 3) Brace stack scanning for the first balanced top-level JSON object
+        def scan_first_object(s: str) -> Optional[str]:
+            depth = 0
+            start_idx = -1
+            in_str = False
+            esc = False
+            for i, ch in enumerate(s):
+                if in_str:
+                    if esc:
+                        esc = False
+                    elif ch == '\\':
+                        esc = True
+                    elif ch == '"':
+                        in_str = False
                     continue
-        # Last resort: bracket matching to get the largest JSON object
+                else:
+                    if ch == '"':
+                        in_str = True
+                        continue
+                    if ch == '{':
+                        if depth == 0:
+                            start_idx = i
+                        depth += 1
+                    elif ch == '}':
+                        if depth > 0:
+                            depth -= 1
+                            if depth == 0 and start_idx != -1:
+                                return s[start_idx:i+1]
+            return None
+
+        candidate = scan_first_object(cleaned)
+        if candidate:
+            try:
+                return json.loads(candidate)
+            except Exception:
+                try:
+                    candidate2 = re.sub(r',\s*([}\]])', r'\1', candidate)
+                    return json.loads(candidate2)
+                except Exception:
+                    pass
+
+        # 4) Last resort: slice from first { to last } and attempt fix
         start = cleaned.find('{')
         end = cleaned.rfind('}')
         if start != -1 and end != -1 and end > start:
-            candidate = cleaned[start:end+1]
-            # Attempt to fix common trailing commas
-            candidate = re.sub(r',\s*([}\]])', r'\1', candidate)
+            span = cleaned[start:end+1]
+            span = re.sub(r',\s*([}\]])', r'\1', span)
             try:
-                return json.loads(candidate)
+                return json.loads(span)
             except Exception:
                 pass
 
