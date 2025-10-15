@@ -90,34 +90,58 @@ class LLMClient:
         if self.generic_key:
             _headers.setdefault("x-goog-api-key", self.generic_key)
         req = request.Request(url, data=data, headers=_headers, method="POST")
-        try:
-            with request.urlopen(req) as resp:
-                raw = resp.read().decode("utf-8", errors="ignore")
-            obj = json.loads(raw)
-            parts = []
-            for cand in (obj.get("candidates") or []):
-                content = (cand.get("content") or {})
-                for part in (content.get("parts") or []):
-                    if isinstance(part, dict) and part.get("text"):
-                        parts.append(part["text"])
-            text = "\n".join(parts).strip()
-            logger.info(f"LLM调用成功（Generic/Gemini兼容），返回 {len(text)} 字符")
-            return text
-        except error.HTTPError as e:
-            body = ""
+        for attempt in range(4):
             try:
-                body = e.read().decode("utf-8", errors="ignore")
-            except Exception:
-                pass
-            code = getattr(e, 'code', 'HTTPError')
-            logger.error(f"LLM API调用失败 (Generic) {code}: {body[:500]}")
-            return ""
-        except error.URLError as e:
-            logger.error(f"LLM API调用异常 (Generic) URL: {getattr(e, 'reason', e)}")
-            return ""
-        except Exception as e:
-            logger.error(f"LLM API调用异常 (Generic): {e}")
-            return ""
+                with request.urlopen(req) as resp:
+                    raw = resp.read().decode("utf-8", errors="ignore")
+                obj = json.loads(raw)
+                parts = []
+                for cand in (obj.get("candidates") or []):
+                    content = (cand.get("content") or {})
+                    for part in (content.get("parts") or []):
+                        if isinstance(part, dict) and part.get("text"):
+                            parts.append(part["text"])
+                text = "\n".join(parts).strip()
+                logger.info(f"LLM调用成功（Generic/Gemini兼容），返回 {len(text)} 字符")
+                if text:
+                    return text
+                raise RuntimeError("Generic endpoint returned empty text")
+            except error.HTTPError as e:
+                body = ""
+                try:
+                    body = e.read().decode("utf-8", errors="ignore")
+                except Exception:
+                    pass
+                code = getattr(e, 'code', 0)
+                if code in (400, 401, 403, 404):
+                    logger.error(f"LLM API调用失败 (Generic {code}): {body[:300]}")
+                    return ""
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] Generic API call failed (attempt {attempt+1}/4): HTTP {code} {body[:160]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用失败 (Generic final {code}): {body[:300]}")
+                    return ""
+            except error.URLError as e:
+                msg = getattr(e, 'reason', e)
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] Generic API call failed (attempt {attempt+1}/4): {str(msg)[:200]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用异常 (Generic final): {msg}")
+                    return ""
+            except Exception as e:
+                msg = str(e)
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] Generic API call failed (attempt {attempt+1}/4): {msg[:200]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用异常 (Generic final): {msg}")
+                    return ""
+        return ""
 
     def _chat_gemini(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
         """Use official Google Gemini SDK when available; fall back to REST if SDK is missing.
