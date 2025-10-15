@@ -161,6 +161,7 @@ class LLMClient:
             try:
                 with request.urlopen(req) as resp:
                     raw = resp.read().decode("utf-8", errors="ignore")
+                self._log("info", f"[LLM] Generic raw (first 200): {raw[:200].replace('\n',' ')}")
                 obj = json.loads(raw)
                 parts = []
                 for cand in (obj.get("candidates") or []):
@@ -288,6 +289,7 @@ class LLMClient:
                 req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
                 with request.urlopen(req) as resp:
                     raw = resp.read().decode("utf-8", errors="ignore")
+                self._log("info", f"[LLM] Gemini REST raw (first 200): {raw[:200].replace('\n',' ')}")
                 obj = json.loads(raw)
                 parts = []
                 for cand in (obj.get("candidates") or []):
