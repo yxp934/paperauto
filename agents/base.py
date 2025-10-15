@@ -32,7 +32,7 @@ class BaseAgent:
         with open(prompt_path, 'r', encoding='utf-8') as f:
             return yaml.safe_load(f)
     
-    def call_llm(self, messages: List[Dict], temperature: float = 0.3, max_tokens: int = 4096) -> Tuple[str, int, int]:
+    def call_llm(self, messages: List[Dict], temperature: float = 0.3, max_tokens: int = 4096, response_schema: Optional[Dict] = None) -> Tuple[str, int, int]:
         """
         Call LLM and count tokens
         
@@ -46,7 +46,7 @@ class BaseAgent:
         prompt_tokens = self.token_counter.count_messages(messages)
         
         # Call LLM
-        response = self.llm_client.chat_completion(messages, temperature, max_tokens)
+        response = self.llm_client.chat_completion(messages, temperature, max_tokens, response_schema=response_schema)
         if not response:
             logger.error(f"[{self.name}] LLM returned empty text")
         else:

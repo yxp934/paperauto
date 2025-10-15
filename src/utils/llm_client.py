@@ -82,7 +82,7 @@ class LLMClient:
         self._emit_job_log(level, message)
 
     # --------------------------- Core chat ---------------------------
-    def chat_completion(self, messages: List[Dict[str, str]], temperature: float = 0.3, max_tokens: int = 2048) -> str:
+    def chat_completion(self, messages: List[Dict[str, str]], temperature: float = 0.3, max_tokens: int = 2048, response_schema: Optional[Dict] = None) -> str:
         # Try providers in order; if one returns empty due to error, cascade to the next
         # Log provider availability and order (no secrets exposed)
         try:
@@ -103,12 +103,12 @@ class LLMClient:
 
         # Prefer Gemini first to honor response_schema and JSON-only guidance
         if self.gemini_key:
-            txt = self._chat_gemini(messages, temperature, max_tokens)
+            txt = self._chat_gemini(messages, temperature, max_tokens, response_schema=response_schema)
             if txt:
                 return txt
             logger.warning("LLMClient: Gemini returned empty, trying Generic endpoint")
         if self.generic_url and self.generic_key:
-            txt = self._chat_generic(messages, temperature, max_tokens)
+            txt = self._chat_generic(messages, temperature, max_tokens, response_schema=response_schema)
             if txt:
                 return txt
             logger.warning("LLMClient: Generic endpoint returned empty, trying OpenAI")
@@ -124,7 +124,7 @@ class LLMClient:
         logger.error("LLMClient: All LLM providers failed or returned empty response")
         return ""
 
-    def _chat_generic(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
+    def _chat_generic(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int, response_schema: Optional[Dict] = None) -> str:
         """Generic Gemini-compatible endpoint using LLM_API_URL/LLM_API_KEY/LLM_MODEL.
         If URL already contains a 'key=' query, do not append.
         """
@@ -138,6 +138,8 @@ class LLMClient:
             "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
             "response_mime_type": "application/json",
         }
+        if response_schema:
+            body["response_schema"] = response_schema
         # Prefer model from env if provided and URL is a template without model
 
         import urllib.parse as _up
@@ -211,7 +213,7 @@ class LLMClient:
                     return ""
         return ""
 
-    def _chat_gemini(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
+    def _chat_gemini(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int, response_schema: Optional[Dict] = None) -> str:
         """Use official Google Gemini SDK when available; fall back to REST if SDK is missing.
         No timeout is set anywhere per requirements.
         """
@@ -232,22 +234,13 @@ class LLMClient:
                 try:
                     client = genai.Client(api_key=api_key)
                     self._log("info", f"[LLM] Gemini SDK request attempt {attempt+1}/4 model={model}")
-                    schema = {
-                        "type": "object",
-                        "properties": {
-                            "title": {"type": "string"},
-                            "bullets": {"type": "array", "items": {"type": "string"}, "minItems": 3, "maxItems": 5},
-                            "narration_parts": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}
-                        },
-                        "required": ["title", "bullets", "narration_parts"]
-                    }
+                    cfg = {"response_mime_type": "application/json"}
+                    if response_schema:
+                        cfg["response_schema"] = response_schema
                     resp = client.models.generate_content(
                         model=model,
                         contents=contents,
-                        config={
-                            "response_mime_type": "application/json",
-                            "response_schema": schema
-                        }
+                        config=cfg
                     )
                     text = (getattr(resp, 'text', '') or '').strip()
                     preview = text[:200].replace('\n',' ')
@@ -271,21 +264,13 @@ class LLMClient:
         for attempt in range(4):
             try:
                 self._log("info", f"[LLM] Gemini REST request attempt {attempt+1}/4 model={model}")
-                schema = {
-                    "type": "object",
-                    "properties": {
-                        "title": {"type": "string"},
-                        "bullets": {"type": "array", "items": {"type": "string"}, "minItems": 3, "maxItems": 5},
-                        "narration_parts": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}
-                    },
-                    "required": ["title", "bullets", "narration_parts"]
-                }
                 body = {
                     "contents": [{"role": "user", "parts": [{"text": contents}]}],
                     "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
                     "response_mime_type": "application/json",
-                    "response_schema": schema
                 }
+                if response_schema:
+                    body["response_schema"] = response_schema
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
                 data = json.dumps(body).encode("utf-8")
                 req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")

@@ -45,19 +45,62 @@ class OrchestratorAgent(BaseAgent):
                 )
                 user_msg = {"role": "user", "content": user_content}
                 
+                # Define minimal response schema to enforce structure (Gemini-compatible)
+                orchestrator_schema = {
+                    "type": "object",
+                    "properties": {
+                        "sections": {
+                            "type": "array",
+                            "minItems": 3,
+                            "maxItems": 6,
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {"type": "string"},
+                                    "summary": {"type": "string"},
+                                    "keywords": {"type": "array", "items": {"type": "string"}}
+                                },
+                                "required": ["title", "summary", "keywords"]
+                            }
+                        }
+                    },
+                    "required": ["sections"]
+                }
+
                 # Call LLM
                 response, prompt_tokens, completion_tokens = self.call_llm(
                     [system_msg, user_msg],
                     temperature=0.2,
-                    max_tokens=4096
+                    max_tokens=4096,
+                    response_schema=orchestrator_schema
                 )
-                
+
                 # Extract JSON
                 data = self.extract_json(response)
                 if not data or 'sections' not in data:
-                    logger.warning(f"[OrchestratorAgent] Attempt {attempt+1}: Invalid response structure")
-                    continue
-                
+                    logger.warning(f"[OrchestratorAgent] Attempt {attempt+1}: Invalid response structure, requesting JSON-only minimal schema (strict)")
+                    # One more JSON-only try within the same attempt
+                    json_only_sys = (
+                        "严格只输出 JSON 对象，不得包含任何前后缀、空行、注释或 Markdown 代码块标记(例如 ``` 或 ```json)。"
+                        "输出必须是单个 JSON 对象，并严格以 { 开始、以 } 结束；若非 JSON 或含多余字符，将被判定为错误并立即丢弃并重新生成。"
+                        "只允许如下结构：{\"sections\":[{\"title\":\"...\",\"summary\":\"...\",\"keywords\":[\"...\",\"...\"]}]}"
+                    )
+                    json_only_user = (
+                        user_content
+                        + "\n\n仅输出严格 JSON 对象，禁止任何 ``` 或 ```json 代码块标记，不要任何解释性文字，"
+                        + "直接以 { 开始、以 } 结束，并确保有效 JSON。"
+                    )
+                    try:
+                        resp2, _, _ = self.call_llm([
+                            {"role": "system", "content": json_only_sys},
+                            {"role": "user", "content": json_only_user}
+                        ], temperature=0.1, max_tokens=4096, response_schema=orchestrator_schema)
+                        data = self.extract_json(resp2)
+                    except Exception:
+                        data = None
+                    if not data or 'sections' not in data:
+                        logger.warning(f"[OrchestratorAgent] Attempt {attempt+1}: Failed to parse JSON after JSON-only request")
+                        continue
                 # Validate sections
                 sections = self._validate_sections(data['sections'])
                 if len(sections) >= 3:
@@ -76,10 +119,10 @@ class OrchestratorAgent(BaseAgent):
             except Exception as e:
                 logger.error(f"[OrchestratorAgent] Attempt {attempt+1} failed: {e}")
         
-        # Fallback: heuristic section generation
-        logger.warning(f"[OrchestratorAgent] All LLM attempts failed, using heuristic fallback")
-        return self._heuristic_fallback(paper)
-    
+        # Disable heuristic fallback per strict policy
+        logger.error(f"[OrchestratorAgent] All LLM attempts failed; heuristic fallback is forbidden")
+        raise RuntimeError("OrchestratorAgent failed to generate valid JSON sections without fallback")
+
     def _validate_sections(self, sections: List) -> List[Dict]:
         """Validate and clean section data"""
         validated = []
