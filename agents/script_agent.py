@@ -14,6 +14,38 @@ class ScriptAgent(BaseAgent):
     def __init__(self, llm_client, retriever=None):
         super().__init__("ScriptAgent")
         self.llm_client = llm_client
+        # Enforce structured outputs via response_schema
+        self.script_schema = {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "bullets": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 5,
+                    "items": {"type": "string"}
+                },
+                "narration_parts": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {"type": "string", "minLength": 600}
+                }
+            },
+            "required": ["title", "bullets", "narration_parts"]
+        }
+        self.narration_only_schema = {
+            "type": "object",
+            "properties": {
+                "narration_parts": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {"type": "string", "minLength": 600}
+                }
+            },
+            "required": ["narration_parts"]
+        }
         self.retriever = retriever
 
     def generate_script(self, section: Dict, paper_context: Dict, max_retries: int = 3) -> Dict:
@@ -60,7 +92,8 @@ class ScriptAgent(BaseAgent):
                 response, prompt_tokens, completion_tokens = self.call_llm(
                     [system_msg, user_msg],
                     temperature=0.3 + 0.1 * attempt,
-                    max_tokens=8192
+                    max_tokens=8192,
+                    response_schema=self.script_schema
                 )
 
                 # Extract JSON
@@ -82,7 +115,7 @@ class ScriptAgent(BaseAgent):
                         resp2, _, _ = self.call_llm([
                             {"role": "system", "content": json_only_sys},
                             {"role": "user", "content": json_only_user}
-                        ], temperature=0.1, max_tokens=4096)
+                        ], temperature=0.1, max_tokens=4096, response_schema=self.script_schema)
                         data = self.extract_json(resp2)
                     except Exception as _:
                         data = None
@@ -135,7 +168,7 @@ class ScriptAgent(BaseAgent):
                     resp_q, _, _ = self.call_llm([
                         {"role": "system", "content": quality_sys},
                         {"role": "user", "content": quality_user}
-                    ], temperature=0.2, max_tokens=8192)
+                    ], temperature=0.2, max_tokens=8192, response_schema=self.script_schema)
                     data_q = self.extract_json(resp_q) or {}
                     script_q = self._validate_and_repair(data_q, section.get('title', ''))
                     script_q = self._post_process(script_q, section, paper_context)
@@ -219,7 +252,7 @@ class ScriptAgent(BaseAgent):
             resp, _, _ = self.call_llm([
                 {"role": "system", "content": system},
                 {"role": "user", "content": user}
-            ], temperature=0.2, max_tokens=8192)
+            ], temperature=0.2, max_tokens=8192, response_schema=self.narration_only_schema)
             data = self.extract_json(resp) or {}
             new_parts = [str(x) for x in (data.get('narration_parts') or [])][:2]
             if len(new_parts) == 2 and all(len(p) >= 600 for p in new_parts):
