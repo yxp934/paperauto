@@ -563,7 +563,20 @@ def run_complete_a2a(max_papers: int, out_dir: Path, log_cb):
                 continue
 
             log_cb({"type":"log","message":f"[A2A] TTS {i+1}.{j+1}: {len(part_text)} chars"})
-            audio_path, dur = ds_tts(part_text)
+
+            # Call TTS and log provider used
+            try:
+                audio_path, dur = ds_tts(part_text)
+                # Detect which TTS provider was used based on filename
+                if 'tts_xfyun' in audio_path:
+                    log_cb({"type":"log","message":f"[A2A] ✅ 讯飞 TTS 成功: {len(part_text)} chars → {dur:.2f}s"})
+                elif 'tts_dashscope' in audio_path:
+                    log_cb({"type":"log","message":f"[A2A] ⚠️  DashScope TTS (回退): {len(part_text)} chars → {dur:.2f}s"})
+                elif 'tts_local' in audio_path:
+                    log_cb({"type":"log","message":f"[A2A] ⚠️  本地 TTS (回退): {len(part_text)} chars → {dur:.2f}s"})
+            except Exception as e:
+                log_cb({"type":"log","message":f"[A2A] ❌ TTS 失败: {e}"})
+                raise
 
             # Convert to WAV if needed (讯飞 TTS 返回 WAV，DashScope 返回 MP3)
             if audio_path.endswith('.wav'):
