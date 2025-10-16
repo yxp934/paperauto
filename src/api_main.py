@@ -734,8 +734,11 @@ async def create_job(req: JobCreate) -> Dict[str, str]:
             await _log(jid, "DONE")
             await log_queues[jid].put("__DONE__")
         except Exception as e:
+            import traceback
             jobs[jid].status = "failed"
-            await _log(jid, f"ERROR: {e}")
+            error_msg = f"ERROR: {e}\n{traceback.format_exc()}"
+            await _log(jid, error_msg)
+            logger({"type":"log","message":error_msg})
             await log_queues[jid].put("__DONE__")
 
     asyncio.create_task(run_pipeline(job_id, req))

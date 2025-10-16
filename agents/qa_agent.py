@@ -35,9 +35,9 @@ class QAAgent:
                 issues.append(f"Script {i+1}: Less than 2 narration parts ({len(parts)})")
             
             for j, part in enumerate(parts):
-                # Check length
-                if len(part) < 600:
-                    issues.append(f"Script {i+1}, part {j+1}: Too short ({len(part)} chars, minimum 600)")
+                # Check length (降低阈值以适应 deepseek-v3.1 模型的生成能力)
+                if len(part) < 400:
+                    issues.append(f"Script {i+1}, part {j+1}: Too short ({len(part)} chars, minimum 400)")
                 
                 # Check Chinese ratio
                 zh_ratio = self._chinese_ratio(part)

@@ -284,9 +284,9 @@ def _generate_audio_local_fallback(text: str, output_dir: str = "temp/audio") ->
 
     try:
         # 使用 macOS say 命令生成 AIFF 音频
-        # -v Ting-Ting 是中文女声
+        # -v Tingting 是中文女声（注意：没有连字符）
         subprocess.run(
-            ['say', '-v', 'Ting-Ting', '-o', aiff_path, text],
+            ['say', '-v', 'Tingting', '-o', aiff_path, text],
             check=True,
             capture_output=True,
             timeout=60
