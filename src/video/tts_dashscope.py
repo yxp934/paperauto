@@ -1,6 +1,6 @@
 """
-DashScope TTS 模块
-使用阿里云 DashScope SDK 的 qwen3-tts-flash 模型生成语音
+TTS 模块 - 多提供商支持
+优先级: 讯飞 TTS > DashScope TTS > 本地 macOS TTS
 """
 import os
 import logging
@@ -17,7 +17,12 @@ logger = logging.getLogger(__name__)
 
 def generate_audio(text: str, output_dir: str = "temp/audio") -> Tuple[str, float]:
     """
-    使用 DashScope TTS 生成音频
+    使用 TTS 生成音频（多提供商支持）
+
+    优先级:
+    1. 讯飞 TTS (XFyun) - 主要提供商
+    2. DashScope TTS - 第一回退
+    3. 本地 macOS TTS - 最终回退
 
     Args:
         text: 要转换的文本（中文）
@@ -27,98 +32,122 @@ def generate_audio(text: str, output_dir: str = "temp/audio") -> Tuple[str, floa
         Tuple[str, float]: (音频文件路径, 时长秒数)
 
     Raises:
-        Exception: 如果 TTS 生成失败
+        Exception: 如果所有 TTS 提供商都失败
     """
     # 确保输出目录存在
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-
-    # 获取 API Key
-    api_key = os.getenv("DASHSCOPE_API_KEY") or os.getenv("TTS_API_KEY")
-    if not api_key:
-        raise Exception("DASHSCOPE_API_KEY 未配置，无法生成 TTS 音频")
 
     # 检查文本长度
     if not text or len(text.strip()) < 5:
         raise Exception(f"文本过短，无法生成 TTS: {text}")
 
+    # 优先尝试讯飞 TTS
+    xfyun_appid = os.getenv("XFYUN_APPID")
+    xfyun_api_key = os.getenv("XFYUN_API_KEY")
+    xfyun_api_secret = os.getenv("XFYUN_API_SECRET")
+
+    if all([xfyun_appid, xfyun_api_key, xfyun_api_secret]):
+        try:
+            logger.info(f"尝试使用讯飞 TTS 生成音频: {text[:50]}... ({len(text)}字)")
+            from src.video.tts_xfyun import generate_audio as xfyun_generate_audio
+            return xfyun_generate_audio(text, output_dir)
+        except Exception as e:
+            logger.warning(f"讯飞 TTS 失败: {e}，尝试回退到 DashScope TTS")
+    else:
+        logger.warning("讯飞 TTS 配置不完整，跳过")
+
+    # 回退到 DashScope TTS
+    api_key = os.getenv("DASHSCOPE_API_KEY") or os.getenv("TTS_API_KEY")
+    if api_key:
+        try:
+            logger.info(f"尝试使用 DashScope TTS 生成音频: {text[:50]}... ({len(text)}字)")
+            return _generate_audio_dashscope(text, output_dir, api_key)
+        except Exception as e:
+            logger.warning(f"DashScope TTS 失败: {e}，尝试回退到本地 TTS")
+    else:
+        logger.warning("DashScope API Key 未配置，跳过")
+
+    # 最终回退到本地 macOS TTS
+    logger.warning(f"所有云端 TTS 服务不可用，使用本地 macOS TTS 回退")
+    return _generate_audio_local_fallback(text, output_dir)
+
+
+def _generate_audio_dashscope(text: str, output_dir: str, api_key: str) -> Tuple[str, float]:
+    """
+    使用 DashScope TTS 生成音频（内部函数）
+
+    Args:
+        text: 要转换的文本
+        output_dir: 输出目录
+        api_key: DashScope API Key
+
+    Returns:
+        Tuple[str, float]: (音频文件路径, 时长秒数)
+    """
+
+    # 输出文件路径
+    output_path = os.path.join(output_dir, f"tts_dashscope_{random.randint(10_000, 99_999)}.mp3")
+
+    # 允许通过环境变量配置模型与音色（优先使用 v2 以提升质量）
+    model = os.getenv("TTS_MODEL", os.getenv("DASHSCOPE_TTS_MODEL", "cosyvoice-v2"))
+    voice = os.getenv("TTS_VOICE", os.getenv("DASHSCOPE_TTS_VOICE", "longxiaochun_v2"))
+
+    # 使用 DashScope Python SDK（推荐）
     try:
-        # 输出文件路径
-        output_path = os.path.join(output_dir, f"tts_{random.randint(10_000, 99_999)}.mp3")
-        logger.info(f"调用 DashScope TTS 生成音频: {text[:50]}... ({len(text)}字)")
+        import dashscope  # type: ignore
+        from dashscope.audio.tts_v2 import SpeechSynthesizer  # type: ignore
+    except Exception as imp_err:
+        raise Exception(f"未安装 dashscope SDK，请先安装: pip install dashscope; 原因: {imp_err}")
 
-        # 允许通过环境变量配置模型与音色（优先使用 v2 以提升质量）
-        model = os.getenv("TTS_MODEL", os.getenv("DASHSCOPE_TTS_MODEL", "cosyvoice-v2"))
-        voice = os.getenv("TTS_VOICE", os.getenv("DASHSCOPE_TTS_VOICE", "longxiaochun_v2"))
-
-        # 使用 DashScope Python SDK（推荐）
-        try:
-            import dashscope  # type: ignore
-            from dashscope.audio.tts_v2 import SpeechSynthesizer  # type: ignore
-        except Exception as imp_err:
-            raise Exception(f"未安装 dashscope SDK，请先安装: pip install dashscope; 原因: {imp_err}")
-
-        # 设置 API Key（如果未通过环境变量被 SDK 自动读取）
-        try:
-            if not getattr(dashscope, 'api_key', None):
-                dashscope.api_key = api_key
-        except Exception:
+    # 设置 API Key（如果未通过环境变量被 SDK 自动读取）
+    try:
+        if not getattr(dashscope, 'api_key', None):
             dashscope.api_key = api_key
+    except Exception:
+        dashscope.api_key = api_key
 
-        synthesizer = SpeechSynthesizer(model=model, voice=voice)
-        audio_bytes = None
-        last_err = None
-        max_attempts = 4  # total attempts
-        for attempt in range(max_attempts):
-            try:
-                # serialize all TTS calls to avoid concurrent-session errors
-                with _TTS_LOCK:
-                    audio_bytes = synthesizer.call(text)
-                if audio_bytes:
-                    break
-                raise RuntimeError("DashScope TTS returned empty audio bytes")
-            except Exception as e:
-                last_err = e
-                msg = str(e)
-                lower = msg.lower()
-                # Retryable conditions: concurrency, rate limit, SSL/EOF/network
-                retryable = ("already started" in lower) or ("already_started" in lower) or ("too many requests" in lower) or ("429" in lower) or ("ssl" in lower) or ("eof" in lower) or ("connection" in lower) or ("timeout" in lower)
-                if attempt < max_attempts - 1 and retryable:
-                    wait_seconds = 2 ** (attempt + 1)  # 2, 4, 8
-                    logger.warning(f"[TTS] DashScope API call failed (attempt {attempt+1}/{max_attempts}): {msg[:200]}, retrying in {wait_seconds}s...")
-                    try:
-                        # Re-instantiate to clear bad session
-                        synthesizer = SpeechSynthesizer(model=model, voice=voice)
-                    except Exception:
-                        pass
-                    try:
-                        import time as _t; _t.sleep(wait_seconds)
-                    except Exception:
-                        pass
-                else:
-                    logger.error(f"DashScope TTS 调用失败 (final): {msg}")
-                    break
-        if not audio_bytes:
-            raise Exception(f"DashScope TTS 返回空音频或失败: {last_err}")
-
-        with open(output_path, 'wb') as f:
-            f.write(audio_bytes)
-
-        duration = _get_audio_duration(output_path)
-        logger.info(f"TTS 音频生成成功: {output_path} ({duration:.2f}秒)")
-        return output_path, duration
-
-    except Exception as e:
-        error_msg = str(e)
-        logger.error(f"DashScope TTS 生成失败: {error_msg}")
-
-        # Always fallback to local TTS when DashScope fails
-        # (DashScope account is in arrearage status)
-        logger.warning(f"DashScope TTS 不可用（{error_msg[:100]}），尝试使用本地 TTS 回退...")
+    synthesizer = SpeechSynthesizer(model=model, voice=voice)
+    audio_bytes = None
+    last_err = None
+    max_attempts = 4  # total attempts
+    for attempt in range(max_attempts):
         try:
-            return _generate_audio_local_fallback(text, output_dir)
-        except Exception as fallback_err:
-            logger.error(f"本地 TTS 回退也失败: {fallback_err}")
-            raise Exception(f"DashScope TTS 失败且本地 TTS 回退失败: {error_msg}")
+            # serialize all TTS calls to avoid concurrent-session errors
+            with _TTS_LOCK:
+                audio_bytes = synthesizer.call(text)
+            if audio_bytes:
+                break
+            raise RuntimeError("DashScope TTS returned empty audio bytes")
+        except Exception as e:
+            last_err = e
+            msg = str(e)
+            lower = msg.lower()
+            # Retryable conditions: concurrency, rate limit, SSL/EOF/network
+            retryable = ("already started" in lower) or ("already_started" in lower) or ("too many requests" in lower) or ("429" in lower) or ("ssl" in lower) or ("eof" in lower) or ("connection" in lower) or ("timeout" in lower)
+            if attempt < max_attempts - 1 and retryable:
+                wait_seconds = 2 ** (attempt + 1)  # 2, 4, 8
+                logger.warning(f"[TTS] DashScope API call failed (attempt {attempt+1}/{max_attempts}): {msg[:200]}, retrying in {wait_seconds}s...")
+                try:
+                    # Re-instantiate to clear bad session
+                    synthesizer = SpeechSynthesizer(model=model, voice=voice)
+                except Exception:
+                    pass
+                try:
+                    import time as _t; _t.sleep(wait_seconds)
+                except Exception:
+                    pass
+            else:
+                logger.error(f"DashScope TTS 调用失败 (final): {msg}")
+                break
+    if not audio_bytes:
+        raise Exception(f"DashScope TTS 返回空音频或失败: {last_err}")
+
+    with open(output_path, 'wb') as f:
+        f.write(audio_bytes)
+
+    duration = _get_audio_duration(output_path)
+    logger.info(f"DashScope TTS 音频生成成功: {output_path} ({duration:.2f}秒)")
+    return output_path, duration
 
 
 def generate_audio_for_sections(
