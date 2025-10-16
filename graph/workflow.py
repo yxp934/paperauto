@@ -17,15 +17,15 @@ logger = logging.getLogger(__name__)
 class A2AWorkflow:
     """Workflow coordinator for A2A multi-agent system"""
     
-    def __init__(self, llm_client, log_callback: Optional[Callable] = None):
+    def __init__(self, llm_client=None, log_callback: Optional[Callable] = None):
         """
         Initialize workflow with agents
-        
+
         Args:
-            llm_client: LLM client instance
+            llm_client: LLM client instance (deprecated, each agent creates its own)
             log_callback: Optional callback for logging (func(dict))
         """
-        self.llm_client = llm_client
+        self.llm_client = llm_client  # Kept for backward compatibility but not used
         self.log_callback = log_callback or (lambda x: None)
         
         # Initialize retrieval components
