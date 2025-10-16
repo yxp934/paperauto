@@ -563,11 +563,18 @@ def run_complete_a2a(max_papers: int, out_dir: Path, log_cb):
                 continue
 
             log_cb({"type":"log","message":f"[A2A] TTS {i+1}.{j+1}: {len(part_text)} chars"})
-            mp3_path, dur = ds_tts(part_text)
+            audio_path, dur = ds_tts(part_text)
 
-            # Convert to WAV
-            wav_path = Path(mp3_path).with_suffix('.wav')
-            subprocess.run(['ffmpeg', '-y', '-i', mp3_path, '-ar', '44100', '-ac', '2', str(wav_path)], check=True, capture_output=True)
+            # Convert to WAV if needed (讯飞 TTS 返回 WAV，DashScope 返回 MP3)
+            if audio_path.endswith('.wav'):
+                # Already WAV, just convert to 44.1kHz stereo
+                wav_path_temp = Path(audio_path).parent / f"{Path(audio_path).stem}_44k.wav"
+                subprocess.run(['ffmpeg', '-y', '-i', audio_path, '-ar', '44100', '-ac', '2', str(wav_path_temp)], check=True, capture_output=True)
+                wav_path = wav_path_temp
+            else:
+                # MP3, convert to WAV
+                wav_path = Path(audio_path).with_suffix('.wav')
+                subprocess.run(['ffmpeg', '-y', '-i', audio_path, '-ar', '44100', '-ac', '2', str(wav_path)], check=True, capture_output=True)
 
             audio_wavs.append(str(wav_path))
             durations.append(dur)
