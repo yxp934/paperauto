@@ -37,10 +37,19 @@ class LLMClient:
         self.hf_model = os.environ.get("HUGGINGFACE_MODEL", "Qwen/Qwen2.5-7B-Instruct")
 
 
-    def __init__(self, log_callback: Optional[callable] = None) -> None:
+    def __init__(self, log_callback: Optional[callable] = None, agent_type: str = "default") -> None:
         # Optional job log callback to stream live logs to frontend
         self.log_callback = log_callback
-        # Generic env-driven endpoint (preferred)
+        # Agent type for model selection (script_agent, orchestrator, slide, qa, default)
+        self.agent_type = agent_type
+
+        # Iflow API (OpenAI-compatible, preferred)
+        self.iflow_base_url = os.environ.get("BASE_URL")
+        self.iflow_api_key = os.environ.get("API_KEY")
+        self.iflow_script_model = os.environ.get("SCRIPT_MODEL")
+        self.iflow_agent_model = os.environ.get("AGENT_MODEL")
+
+        # Generic env-driven endpoint (fallback)
         self.generic_url = os.environ.get("LLM_API_URL")
         self.generic_key = os.environ.get("LLM_API_KEY")
         self.generic_model = os.environ.get("LLM_MODEL")
@@ -86,7 +95,11 @@ class LLMClient:
         # Try providers in order; if one returns empty due to error, cascade to the next
         # Log provider availability and order (no secrets exposed)
         try:
+            # Determine which Iflow model to use based on agent type
+            iflow_model = self.iflow_script_model if self.agent_type == "script_agent" else self.iflow_agent_model
+
             providers = {
+                "iflow": bool(self.iflow_base_url and self.iflow_api_key and iflow_model),
                 "generic": bool(self.generic_url and self.generic_key),
                 "gemini": bool(self.gemini_key),
                 "openai": bool(self.openai_key),
@@ -94,14 +107,24 @@ class LLMClient:
             }
             self._log(
                 "info",
-                f"[LLM] provider order: generic({providers['generic']}), gemini({providers['gemini']}), "
+                f"[LLM] agent_type={self.agent_type}, provider order: iflow({providers['iflow']}), "
+                f"generic({providers['generic']}), gemini({providers['gemini']}), "
                 f"openai({providers['openai']}), hf({providers['hf']}); temp={temperature}, max_tokens={max_tokens}; "
-                f"models: gemini={self.gemini_model}, openai={self.openai_model}, hf={self.hf_model}"
+                f"models: iflow={iflow_model}, gemini={self.gemini_model}, openai={self.openai_model}, hf={self.hf_model}"
             )
         except Exception:
             pass
 
-        # Prefer Gemini first to honor response_schema and JSON-only guidance
+        # Prefer Iflow first (OpenAI-compatible API)
+        if self.iflow_base_url and self.iflow_api_key:
+            iflow_model = self.iflow_script_model if self.agent_type == "script_agent" else self.iflow_agent_model
+            if iflow_model:
+                txt = self._chat_iflow(messages, temperature, max_tokens, iflow_model)
+                if txt:
+                    return txt
+                logger.warning("LLMClient: Iflow returned empty, trying Gemini")
+
+        # Fallback to Gemini
         if self.gemini_key:
             txt = self._chat_gemini(messages, temperature, max_tokens, response_schema=response_schema)
             if txt:
@@ -324,6 +347,81 @@ class LLMClient:
                     time.sleep(wait_seconds)
                 else:
                     logger.error(f"LLM API调用异常 (Gemini REST final): {msg}")
+                    return ""
+        return ""
+
+    def _chat_iflow(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int, model: str) -> str:
+        """Iflow API (OpenAI-compatible) with model selection based on agent type.
+        Uses BASE_URL, API_KEY, and either SCRIPT_MODEL or AGENT_MODEL from env.
+        """
+        url = f"{self.iflow_base_url.rstrip('/')}/chat/completions"
+        body = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }
+        data = json.dumps(body).encode("utf-8")
+        req = request.Request(
+            url,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.iflow_api_key}",
+            },
+            method="POST",
+        )
+
+        for attempt in range(4):
+            self._log("info", f"[LLM] Iflow request attempt {attempt+1}/4 model={model}")
+
+            try:
+                with request.urlopen(req) as resp:
+                    raw = resp.read().decode("utf-8", errors="ignore")
+                obj = json.loads(raw)
+                choices = obj.get("choices") or []
+                if choices and choices[0].get("message", {}).get("content"):
+                    text = choices[0]["message"]["content"].strip()
+                    preview = text[:200].replace('\n', ' ')
+                    self._log("info", f"[LLM] Iflow text len={len(text)} preview: {preview}")
+                    return text
+                raise RuntimeError("Iflow returned empty choices/content")
+            except error.HTTPError as e:
+                body = ""
+                try:
+                    body = e.read().decode("utf-8", errors="ignore")
+                except Exception:
+                    pass
+                code = getattr(e, 'code', 0)
+                # Non-retryable errors
+                if code in (400, 401, 403, 404):
+                    logger.error(f"LLM API调用失败 (Iflow {code}): {body[:300]}")
+                    return ""
+                # Retryable errors
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] Iflow API call failed (attempt {attempt+1}/4): HTTP {code} {body[:160]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用失败 (Iflow final {code}): {body[:300]}")
+                    return ""
+            except error.URLError as e:
+                msg = getattr(e, 'reason', e)
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] Iflow API call failed (attempt {attempt+1}/4): {str(msg)[:200]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用异常 (Iflow final): {msg}")
+                    return ""
+            except Exception as e:
+                msg = str(e)
+                if attempt < 3:
+                    wait_seconds = 2 ** (attempt + 1)
+                    logger.warning(f"[LLMClient] Iflow API call failed (attempt {attempt+1}/4): {msg[:200]}, retrying in {wait_seconds}s...")
+                    time.sleep(wait_seconds)
+                else:
+                    logger.error(f"LLM API调用异常 (Iflow final): {msg}")
                     return ""
         return ""
 

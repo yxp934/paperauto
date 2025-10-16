@@ -4,16 +4,18 @@ Orchestrator Agent - analyzes paper structure and plans section generation
 import logging
 from typing import Dict, List
 from agents.base import BaseAgent
+from src.utils.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
 
 class OrchestratorAgent(BaseAgent):
     """Agent for paper structure analysis and task planning"""
-    
-    def __init__(self, llm_client):
-        super().__init__("OrchestratorAgent")
-        self.llm_client = llm_client
+
+    def __init__(self, llm_client=None, log_callback=None):
+        super().__init__("OrchestratorAgent", agent_type="orchestrator")
+        # Create own LLM client with orchestrator type for model selection
+        self.llm_client = LLMClient(log_callback=log_callback, agent_type="orchestrator") if llm_client is None else llm_client
     
     def analyze_paper(self, paper: Dict, max_retries: int = 3) -> Dict:
         """

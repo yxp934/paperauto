@@ -14,9 +14,10 @@ logger = logging.getLogger(__name__)
 
 class BaseAgent:
     """Base class for all agents with LLM and token counting"""
-    
-    def __init__(self, name: str):
+
+    def __init__(self, name: str, agent_type: str = "default"):
         self.name = name
+        self.agent_type = agent_type  # For model selection (script_agent, orchestrator, slide, qa, default)
         self.llm_client = None  # Will be injected
         self.token_counter = TokenCounter()
         self.total_tokens = 0

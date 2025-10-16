@@ -5,16 +5,18 @@ import logging
 from typing import Dict, List, Optional
 from agents.base import BaseAgent
 from tools.image_gen import ImageGenerator
+from src.utils.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
 
 class SlideAgent(BaseAgent):
     """Agent for generating slide layouts and images"""
-    
-    def __init__(self, llm_client):
-        super().__init__("SlideAgent")
-        self.llm_client = llm_client
+
+    def __init__(self, llm_client=None, log_callback=None):
+        super().__init__("SlideAgent", agent_type="slide")
+        # Create own LLM client with slide type for model selection
+        self.llm_client = LLMClient(log_callback=log_callback, agent_type="slide") if llm_client is None else llm_client
         self.image_generator = ImageGenerator()
     
     def generate_slide_plan(self, script: Dict, paper_context: Dict, slide_index: int) -> Dict:

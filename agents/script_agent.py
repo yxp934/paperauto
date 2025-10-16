@@ -4,6 +4,7 @@ Script Agent - generates high-quality Chinese narration scripts
 import logging
 from typing import Dict, List, Optional
 from agents.base import BaseAgent
+from src.utils.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
@@ -11,9 +12,10 @@ logger = logging.getLogger(__name__)
 class ScriptAgent(BaseAgent):
     """Agent for generating section scripts with quality assurance"""
 
-    def __init__(self, llm_client, retriever=None):
-        super().__init__("ScriptAgent")
-        self.llm_client = llm_client
+    def __init__(self, llm_client=None, retriever=None, log_callback=None):
+        super().__init__("ScriptAgent", agent_type="script_agent")
+        # Create own LLM client with script_agent type for model selection
+        self.llm_client = LLMClient(log_callback=log_callback, agent_type="script_agent") if llm_client is None else llm_client
         # Enforce structured outputs via response_schema
         # NOTE: Removed minLength constraints from schema as they can cause Gemini API to hang
         # Length validation is now done in post-processing with rewrite logic

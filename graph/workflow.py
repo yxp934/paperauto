@@ -33,10 +33,10 @@ class A2AWorkflow:
         self.text_splitter = PaperTextSplitter()
         self.vector_store = PaperVectorStore()
         
-        # Initialize agents
-        self.orchestrator = OrchestratorAgent(llm_client)
-        self.script_agent = ScriptAgent(llm_client, retriever=self.vector_store)
-        self.slide_agent = SlideAgent(llm_client)
+        # Initialize agents (each creates its own LLMClient with appropriate agent_type)
+        self.orchestrator = OrchestratorAgent(log_callback=log_callback)  # Uses AGENT_MODEL
+        self.script_agent = ScriptAgent(retriever=self.vector_store, log_callback=log_callback)  # Uses SCRIPT_MODEL
+        self.slide_agent = SlideAgent(log_callback=log_callback)  # Uses AGENT_MODEL
         self.qa_agent = QAAgent()
         
         # State tracking
