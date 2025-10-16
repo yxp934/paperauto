@@ -223,3 +223,9 @@ pnpm-debug.log*
 .next/cache/
 .env
 .env
+
+# Project-specific: temporary files and outputs
+temp/
+output/videos/
+output/slides/
+output/generated_images/
